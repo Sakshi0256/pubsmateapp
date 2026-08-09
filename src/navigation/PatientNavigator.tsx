@@ -20,13 +20,7 @@ import PatientNotificationsScreen from '../screens/patient/PatientNotificationsS
 import PatientProfileScreen from '../screens/patient/PatientProfileScreen';
 
 const Tab = createBottomTabNavigator();
-
 const Stack = createNativeStackNavigator();
-
-
-
-
-
 /* ---------------- HOME STACK ---------------- */
 
 const HomeStack = () => {
@@ -60,10 +54,6 @@ const HomeStack = () => {
     </Stack.Navigator>
   );
 };
-
-
-
-
 
 /* ---------------- CATEGORY STACK ---------------- */
 
@@ -106,10 +96,6 @@ const CategoryStack = () => {
     </Stack.Navigator>
   );
 };
-
-
-
-
 
 /* ---------------- MAIN TABS ---------------- */
 

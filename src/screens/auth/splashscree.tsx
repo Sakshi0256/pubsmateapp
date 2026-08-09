@@ -96,7 +96,7 @@ export default SplashScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0000',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   },
 
   tagline: {
-    color: '#9B7474',
+    color: '#6B6B6B',
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 24,
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   },
 
   loadingText: {
-    color: '#9B7474',
+    color: '#6B6B6B',
     fontSize: 14,
   },
 });

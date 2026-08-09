@@ -9,6 +9,9 @@ import {
   Animated,
   StatusBar,
 } from 'react-native';
+import API from '../../services/api';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
+import { useCallback } from 'react';
 
 const API_BASE = 'http://pubsmate-backend.vercel.app';
 
@@ -57,6 +60,7 @@ const DoctorCard = ({
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
+  
   useEffect(() => {
     Animated.parallel([
       Animated.timing(slideAnim, { toValue: 0, duration: 420, delay: index * 80, useNativeDriver: true }),
@@ -169,27 +173,53 @@ const ClinicAppointmentsScreen = ({ navigation }: { navigation: any }) => {
   const headerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(headerAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
-    fetchDoctors();
-  }, []);
+  Animated.timing(headerAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+}, []);
+
+const refreshDoctors = useCallback(() => {
+  fetchDoctors();
+}, []);
+
+useAutoRefresh(refreshDoctors);
+
+  // const fetchDoctors = async () => {
+  //   try {
+  //     setLoading(true);
+  //     setError(null);
+  //     const res = await fetch(`${API_BASE}/api/v1/doctors`);
+  //     const data = await res.json();
+  //     if (data.success && Array.isArray(data.doctors)) {
+  //       setDoctors(data.doctors);
+  //     } else {
+  //       setError('Unexpected response from server.');
+  //     }
+  //   } catch {
+  //     setError('Unable to connect. Please check your network.');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
 
   const fetchDoctors = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch(`${API_BASE}/api/v1/doctors`);
-      const data = await res.json();
-      if (data.success && Array.isArray(data.doctors)) {
-        setDoctors(data.doctors);
-      } else {
-        setError('Unexpected response from server.');
-      }
-    } catch {
-      setError('Unable to connect. Please check your network.');
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    setError(null);
+    // ✅ Use clinic-specific endpoint
+    const response = await API.get('/clinic/doctors');
+    if (response.data.success && Array.isArray(response.data.doctors)) {
+      setDoctors(response.data.doctors);
+    } else {
+      setError('Unexpected response from server.');
     }
-  };
+  } catch (error: any) {
+    console.log('Fetch doctors error:', error);
+    setError(error?.response?.data?.message || 'Unable to connect. Please check your network.');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleViewSlots = (
     doctor: Doctor
@@ -209,7 +239,7 @@ const ClinicAppointmentsScreen = ({ navigation }: { navigation: any }) => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
+     <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View style={styles.bgBlob1} />
       <View style={styles.bgBlob2} />
 
@@ -313,25 +343,25 @@ export default ClinicAppointmentsScreen;
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0A0A0A' },
-  bgBlob1: { position: 'absolute', width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(168,213,186,0.06)', top: -60, right: -80 },
-  bgBlob2: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(100,180,140,0.04)', bottom: 120, left: -60 },
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
+  bgBlob1: { position: 'absolute', width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(168,213,186,0.10)', top: -60, right: -80 },
+  bgBlob2: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(100,180,140,0.07)', bottom: 120, left: -60 },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 18, paddingTop: 56 },
 
   headerBlock: { marginBottom: 24 },
   headerTopRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
   logoMark: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#D62828', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  logoText: { color: '#0A0A0A', fontWeight: '900', fontSize: 15, letterSpacing: -0.5 },
-  clinicLabel: { color: '#FF4D4D', fontSize: 13, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' },
-  pageTitle: { fontSize: 36, fontWeight: '800', color: '#FFFFFF', letterSpacing: -1, lineHeight: 40, marginBottom: 8 },
-  pageSubtitle: { color: '#8A9E94', fontSize: 14, lineHeight: 21 },
+  logoText: { color: '#FFFFFF', fontWeight: '900', fontSize: 15, letterSpacing: -0.5 },
+  clinicLabel: { color: '#D62828', fontSize: 13, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' },
+  pageTitle: { fontSize: 36, fontWeight: '800', color: '#1A1A1A', letterSpacing: -1, lineHeight: 40, marginBottom: 8 },
+  pageSubtitle: { color: '#6B7C73', fontSize: 14, lineHeight: 21 },
 
-  statsStrip: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', padding: 16, marginBottom: 24, alignItems: 'center', justifyContent: 'space-around' },
+  statsStrip: { flexDirection: 'row', backgroundColor: '#FAFAFA', borderRadius: 16, borderWidth: 1, borderColor: '#EDEDED', padding: 16, marginBottom: 24, alignItems: 'center', justifyContent: 'space-around' },
   statItem: { alignItems: 'center' },
   statValue: { color: '#D62828', fontSize: 18, fontWeight: '800', letterSpacing: -0.5 },
-  statLabel: { color: '#B3B3B3', fontSize: 11, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
-  statDivider: { width: 1, height: 30, backgroundColor: 'rgba(255,255,255,0.08)' },
+  statLabel: { color: '#8A8A8A', fontSize: 11, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
+  statDivider: { width: 1, height: 30, backgroundColor: '#EDEDED' },
   addBtn: {
     backgroundColor: '#D62828',
     paddingHorizontal: 16,
@@ -345,43 +375,43 @@ const styles = StyleSheet.create({
   },
 
   centerBox: { alignItems: 'center', paddingVertical: 60 },
-  loadingText: { color: '#B3B3B3', marginTop: 16, fontSize: 14 },
+  loadingText: { color: '#8A8A8A', marginTop: 16, fontSize: 14 },
   errorEmoji: { fontSize: 40, marginBottom: 12 },
-  errorText: { color: '#8A9E94', fontSize: 15, textAlign: 'center', lineHeight: 22 },
-  retryBtn: { marginTop: 20, paddingHorizontal: 28, paddingVertical: 12, backgroundColor: 'rgba(168,213,186,0.12)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(168,213,186,0.3)' },
+  errorText: { color: '#6B7C73', fontSize: 15, textAlign: 'center', lineHeight: 22 },
+  retryBtn: { marginTop: 20, paddingHorizontal: 28, paddingVertical: 12, backgroundColor: 'rgba(168,213,186,0.2)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(168,213,186,0.5)' },
   retryText: { color: '#D62828', fontWeight: '700', fontSize: 14 },
 
-  card: { backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', borderRadius: 24, padding: 18, marginBottom: 14, overflow: 'hidden' },
-  selectedCard: { borderColor: 'rgba(168,213,186,0.5)', backgroundColor: 'rgba(168,213,186,0.05)' },
+  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EDEDED', borderRadius: 24, padding: 18, marginBottom: 14, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  selectedCard: { borderColor: 'rgba(168,213,186,0.7)', backgroundColor: 'rgba(168,213,186,0.08)' },
   selectedStripe: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, backgroundColor: '#D62828', borderTopLeftRadius: 24, borderBottomLeftRadius: 24 },
 
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14 },
-  avatarContainer: { width: 52, height: 52, borderRadius: 16, backgroundColor: 'rgba(168,213,186,0.1)', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: 'rgba(168,213,186,0.15)' },
+  avatarContainer: { width: 52, height: 52, borderRadius: 16, backgroundColor: 'rgba(168,213,186,0.18)', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: 'rgba(168,213,186,0.3)' },
   avatarEmoji: { fontSize: 24 },
   headerInfo: { flex: 1 },
-  name: { color: '#FFFFFF', fontSize: 18, fontWeight: '700', letterSpacing: -0.3, marginBottom: 6 },
+  name: { color: '#1A1A1A', fontSize: 18, fontWeight: '700', letterSpacing: -0.3, marginBottom: 6 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  specialtyBadge: { backgroundColor: 'rgba(168,213,186,0.12)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(168,213,186,0.2)' },
-  specialtyText: { color: '#D62828', fontSize: 12, fontWeight: '600' },
-  selectedBadge: { backgroundColor: 'rgba(168,213,186,0.2)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3 },
-  selectedBadgeText: { color: '#D62828', fontSize: 12, fontWeight: '700' },
+  specialtyBadge: { backgroundColor: 'rgba(168,213,186,0.2)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(168,213,186,0.35)' },
+  specialtyText: { color: '#2F7A4F', fontSize: 12, fontWeight: '600' },
+  selectedBadge: { backgroundColor: 'rgba(168,213,186,0.3)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3 },
+  selectedBadgeText: { color: '#2F7A4F', fontSize: 12, fontWeight: '700' },
   feeBox: { alignItems: 'flex-end' },
-  feeLabel: { color: '#4E6A5A', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 2 },
-  feeAmount: { color: '#FFFFFF', fontSize: 18, fontWeight: '800', letterSpacing: -0.5 },
+  feeLabel: { color: '#8A9E94', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 2 },
+  feeAmount: { color: '#1A1A1A', fontSize: 18, fontWeight: '800', letterSpacing: -0.5 },
 
-  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 14 },
+  divider: { height: 1, backgroundColor: '#EDEDED', marginBottom: 14 },
 
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
-  metaPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
+  metaPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: '#E8E8E8' },
   metaPillIcon: { fontSize: 12, marginRight: 5 },
-  metaPillText: { color: '#8A9E94', fontSize: 12, fontWeight: '500' },
+  metaPillText: { color: '#6B7C73', fontSize: 12, fontWeight: '500' },
 
   about: { color: '#6E8A7A', fontSize: 13, lineHeight: 19, marginBottom: 14 },
 
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
   actionBtn: { flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1 },
-  actionBtnSecondary: { backgroundColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' },
-  actionBtnSecondaryText: { color: '#B3B3B3', fontSize: 13, fontWeight: '600' },
-  actionBtnPrimary: { backgroundColor: 'rgba(168,213,186,0.12)', borderColor: 'rgba(168,213,186,0.3)' },
-  actionBtnPrimaryText: { color: '#D62828', fontSize: 13, fontWeight: '700' },
+  actionBtnSecondary: { backgroundColor: '#F5F5F5', borderColor: '#E8E8E8' },
+  actionBtnSecondaryText: { color: '#6B6B6B', fontSize: 13, fontWeight: '600' },
+  actionBtnPrimary: { backgroundColor: 'rgba(168,213,186,0.2)', borderColor: 'rgba(168,213,186,0.5)' },
+  actionBtnPrimaryText: { color: '#2F7A4F', fontSize: 13, fontWeight: '700' },
 });

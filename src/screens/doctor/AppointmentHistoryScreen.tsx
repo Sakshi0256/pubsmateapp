@@ -30,9 +30,9 @@ const AppointmentHistoryScreen = () => {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A0A0A' }}>
-        <Text style={{ color: '#8F9B95' }}>Loading...</Text>
-      </View>
+     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+  <Text style={{ color: '#6B6B6B' }}>Loading...</Text>
+</View>
     );
   }
 
@@ -97,25 +97,27 @@ export default AppointmentHistoryScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 18,
     paddingTop: 18,
   },
   header: {
     fontSize: 30,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     marginBottom: 24,
   },
   card: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 22,
     padding: 18,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#EDEDED',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
   },
   topRow: {
@@ -127,26 +129,26 @@ const styles = StyleSheet.create({
   patientName: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     marginBottom: 4,
   },
   issue: {
     fontSize: 13,
-    color: '#8F9B95',
+    color: '#6B6B6B',
   },
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 50,
   },
-  completedBadge: { backgroundColor: 'rgba(34,197,94,0.15)' },
-  completedText: { color: '#22C55E' },
-  pendingBadge: { backgroundColor: 'rgba(245,158,11,0.15)' },
-  pendingText: { color: '#F59E0B' },
-  rejectedBadge: { backgroundColor: 'rgba(239,68,68,0.15)' },
-  rejectedText: { color: '#EF4444' },
-  acceptedBadge: { backgroundColor: 'rgba(59,130,246,0.15)' },
-  acceptedText: { color: '#60A5FA' },
+  completedBadge: { backgroundColor: 'rgba(34,197,94,0.12)' },
+  completedText: { color: '#16A34A' },
+  pendingBadge: { backgroundColor: 'rgba(245,158,11,0.12)' },
+  pendingText: { color: '#D97706' },
+  rejectedBadge: { backgroundColor: 'rgba(239,68,68,0.12)' },
+  rejectedText: { color: '#DC2626' },
+  acceptedBadge: { backgroundColor: 'rgba(59,130,246,0.12)' },
+  acceptedText: { color: '#2563EB' },
   statusText: {
     fontSize: 12,
     fontWeight: '700',
@@ -162,6 +164,6 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 13,
-    color: '#8F9B95',
+    color: '#6B6B6B',
   },
 });

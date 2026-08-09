@@ -38,18 +38,15 @@ const LoginScreen = ({ navigation, route }: any) => {
         password,
         role: selectedRole,
       });
- console.log('🔐 Login Response:', response.data);
+      console.log('🔐 Login Response:', response.data);
       const data = response.data;
-console.log('🔐 Login Response:', response.data);
+
       await AsyncStorage.setItem('token', data.token);
       await AsyncStorage.setItem('user', JSON.stringify(data.user));
 
-     
-global.authToken = data.token; 
-// ✅ Token save hua ya nahi check karo
-const savedToken = await AsyncStorage.getItem('token');
-
-console.log('💾 Token saved in AsyncStorage:', savedToken);
+      global.authToken = data.token;
+      const savedToken = await AsyncStorage.getItem('token');
+      console.log('💾 Token saved in AsyncStorage:', savedToken);
 
       if (data.user.role === 'patient') {
         navigation.replace('PatientTabs');
@@ -86,7 +83,7 @@ console.log('💾 Token saved in AsyncStorage:', savedToken);
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor="#050808" barStyle="light-content" />
+      <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
 
       <KeyboardAvoidingWrapper contentContainerStyle={styles.scrollContainer}>
         <View style={styles.content}>
@@ -161,9 +158,9 @@ console.log('💾 Token saved in AsyncStorage:', savedToken);
           </View>
 
           {/* FORGOT PASSWORD */}
-          <TouchableOpacity style={styles.forgotContainer}>
+          {/* <TouchableOpacity style={styles.forgotContainer}>
             <Text style={styles.forgotText}>Forgot Password?</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           {/* LOGIN BUTTON */}
           <TouchableOpacity
@@ -173,16 +170,18 @@ console.log('💾 Token saved in AsyncStorage:', savedToken);
             <Text style={styles.loginButtonText}>Login</Text>
           </TouchableOpacity>
 
-          {/* SIGN UP LINK */}
-          <TouchableOpacity
-            onPress={() =>
-              navigation.navigate('Signup', { role: selectedRole })
-            }>
-            <Text style={styles.signupText}>
-              Don't have an account?{' '}
-              <Text style={styles.signupHighlight}>Sign Up</Text>
-            </Text>
-          </TouchableOpacity>
+          {/* SIGN UP LINK - hidden for Doctor role */}
+          {selectedRole !== 'doctor' && (
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('Signup', { role: selectedRole })
+              }>
+              <Text style={styles.signupText}>
+                Don't have an account?{' '}
+                <Text style={styles.signupHighlight}>Sign Up</Text>
+              </Text>
+            </TouchableOpacity>
+          )}
 
         </View>
       </KeyboardAvoidingWrapper>
@@ -195,7 +194,7 @@ export default LoginScreen;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0A0000',
+    backgroundColor: '#FFFFFF',
   },
 
   scrollContainer: {
@@ -203,34 +202,37 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    // flex: 1,
-    // justifyContent: 'center',
     paddingHorizontal: 24,
     paddingVertical: 48,
   },
 
   heading: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 34,
     fontWeight: '800',
     marginBottom: 8,
   },
 
   subHeading: {
-    color: '#9B7474',
+    color: '#6B6B6B',
     fontSize: 15,
     marginBottom: 32,
   },
 
   roleBadgeCard: {
-    backgroundColor: '#150505',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#3D1414',
+    borderColor: '#EDEDED',
     borderRadius: 28,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
 
   iconCircle: {
@@ -248,13 +250,13 @@ const styles = StyleSheet.create({
   },
 
   roleLabel: {
-    color: '#9B7474',
+    color: '#6B6B6B',
     fontSize: 12,
     marginBottom: 2,
   },
 
   roleValue: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 18,
     fontWeight: '700',
   },
@@ -281,17 +283,22 @@ const styles = StyleSheet.create({
   },
 
   fieldCard: {
-    backgroundColor: '#150505',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#3D1414',
+    borderColor: '#EDEDED',
     borderRadius: 28,
     paddingHorizontal: 22,
     paddingVertical: 18,
     marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
 
   fieldLabel: {
-    color: '#9B7474',
+    color: '#6B6B6B',
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 6,
@@ -300,7 +307,7 @@ const styles = StyleSheet.create({
   },
 
   input: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 16,
     fontWeight: '500',
     padding: 0,
@@ -348,7 +355,7 @@ const styles = StyleSheet.create({
 
   signupText: {
     textAlign: 'center',
-    color: '#9B7474',
+    color: '#6B6B6B',
     fontSize: 14,
     fontWeight: '500',
   },

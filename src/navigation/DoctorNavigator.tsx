@@ -1,5 +1,5 @@
 import React from 'react';
-import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
@@ -13,19 +13,19 @@ const Tab = createBottomTabNavigator();
 const DoctorNavigator = () => {
   return (
     <Tab.Navigator
-      screenOptions={({route}) => ({
+      screenOptions={({ route }) => ({
         headerShown: false,
 
         tabBarActiveTintColor: '#D62828',
-        tabBarInactiveTintColor: '#B3B3B3',
+        tabBarInactiveTintColor: '#9B9B9B',
 
         tabBarStyle: {
-          backgroundColor: '#0A0A0A',
+          backgroundColor: '#FFFFFF',
           height: 72,
           paddingTop: 8,
           paddingBottom: 10,
           borderTopWidth: 1,
-          borderTopColor: 'rgba(255,255,255,0.06)',
+          borderTopColor: '#EDEDED',
           elevation: 0,
         },
 
@@ -34,7 +34,7 @@ const DoctorNavigator = () => {
           fontWeight: '700',
         },
 
-        tabBarIcon: ({color, focused}) => {
+        tabBarIcon: ({ color, focused }) => {
           let iconName: any;
 
           switch (route.name) {
@@ -81,7 +81,7 @@ const DoctorNavigator = () => {
           );
         },
       })}>
-      
+
       <Tab.Screen
         name="Dashboard"
         component={DoctorDashboardScreen}

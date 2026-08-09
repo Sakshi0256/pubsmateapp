@@ -128,7 +128,7 @@ export default DoctorNotificationsScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 18,
     paddingTop: 18,
   },
@@ -136,28 +136,28 @@ const styles = StyleSheet.create({
   header: {
     fontSize: 30,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     marginBottom: 24,
   },
 
   card: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 18,
     marginBottom: 14,
 
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: '#EDEDED',
 
-    shadowColor: '#D62828',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 3,
     },
 
-    elevation: 3,
+    elevation: 2,
   },
 
   row: {
@@ -174,19 +174,19 @@ const styles = StyleSheet.create({
   },
 
   primaryDot: {
-    backgroundColor: '#60A5FA',
+    backgroundColor: '#3B82F6',
   },
 
   dangerDot: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#DC2626',
   },
 
   successDot: {
-    backgroundColor: '#22C55E',
+    backgroundColor: '#16A34A',
   },
 
   warningDot: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#D97706',
   },
 
   content: {
@@ -196,13 +196,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     marginBottom: 6,
   },
 
   message: {
     fontSize: 13,
-    color: '#8F9B95',
+    color: '#6B6B6B',
     lineHeight: 20,
     marginBottom: 10,
   },

@@ -21,7 +21,7 @@ const RoleSelectionScreen = ({navigation}: any) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#050808" barStyle="light-content" />
+     <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
 
       <View style={styles.content}>
         <Image source={logo} style={styles.logo} resizeMode="contain" />
@@ -66,7 +66,7 @@ export default RoleSelectionScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0000',
+    backgroundColor: '#FFFFFF',
   },
 
   content: {
@@ -78,34 +78,45 @@ const styles = StyleSheet.create({
   },
 
   logo: {
-    width: SCREEN_WIDTH * 0.55,
-    height: (SCREEN_WIDTH * 0.55) / 1.62, // original logo ratio (167x103)
+    width: SCREEN_WIDTH * 0.60,
+    height: (SCREEN_WIDTH * 0.80) / 1.62, // original logo ratio (167x103)
     alignSelf: 'center',
     marginBottom: SCREEN_WIDTH * 0.08,
   },
 
   heading: {
-    color: '#FFFFFF',
-    fontSize: SCREEN_WIDTH * 0.085,
+    color: '#1A1A1A',
+    fontSize: SCREEN_WIDTH * 0.070,
     fontWeight: '800',
-    marginBottom: 8,
+    // marginBottom: 8,
+    alignSelf: 'center',
+    justifyContent: 'center',
+   marginBottom: SCREEN_WIDTH * 0.08,
   },
 
   subHeading: {
-    color: '#9B7474',
+    color: '#6B6B6B',
     fontSize: SCREEN_WIDTH * 0.038,
-    marginBottom: SCREEN_WIDTH * 0.1,
+    // marginBottom: SCREEN_WIDTH * 0.1,
+    alignSelf: 'center',
+    justifyContent: 'center',
+    marginBottom: SCREEN_WIDTH * 0.04,
   },
 
   card: {
-    backgroundColor: '#150505',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#3D1414',
+    borderColor: '#EDEDED',
     borderRadius: 28,
     padding: SCREEN_WIDTH * 0.055,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 18,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
 
   iconCircle: {
@@ -127,14 +138,14 @@ const styles = StyleSheet.create({
   },
 
   cardTitle: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: SCREEN_WIDTH * 0.05,
     fontWeight: '700',
     marginBottom: 4,
   },
 
   cardDesc: {
-    color: '#9B7474',
+    color: '#6B6B6B',
     fontSize: SCREEN_WIDTH * 0.033,
     lineHeight: 20,
   },

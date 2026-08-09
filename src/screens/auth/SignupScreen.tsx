@@ -9,9 +9,14 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  Image,        // add
+  Dimensions,   // add
 } from 'react-native';
 
 import axios from 'axios';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');   // add
+const logo = require('../../assets/images/logo.png');       // add — path adjust karo agar folder alag hai
 
 const SignupScreen = ({
   route,
@@ -32,6 +37,8 @@ const SignupScreen = ({
   const [specialty, setSpecialty] =
     useState('');
 
+  const [address, setAddress] = useState('');
+
   const [qualification, setQualification] =
     useState('');
 
@@ -49,7 +56,7 @@ const SignupScreen = ({
 
 
   const BASE_URL =
-    'http://pubsmate-backend.vercel.app/api/v1';
+    'https://pubsmate-backend.vercel.app//api/v1';
 
   const handleSignup = async () => {
     try {
@@ -72,6 +79,11 @@ const SignupScreen = ({
         return;
       }
 
+      if (role === 'clinic' && !address) {
+        Alert.alert('Error', 'Please fill all fields');
+        return;
+      }
+
       const response =
         await axios.post(
           `${BASE_URL}/auth/signup`,
@@ -80,7 +92,7 @@ const SignupScreen = ({
             email,
             password,
             role,
-
+            address,
             specialty,
             qualification,
             experience,
@@ -106,12 +118,10 @@ const SignupScreen = ({
       );
 
     } catch (error: any) {
-
+      console.log('Signup error:', error?.response?.data || error.message);
       Alert.alert(
         'Signup Failed',
-        error?.response?.data
-          ?.message ||
-        'Something went wrong',
+        error?.response?.data?.message || error.message || 'Something went wrong',
       );
     }
   };
@@ -120,8 +130,8 @@ const SignupScreen = ({
     <SafeAreaView
       style={styles.container}>
       <StatusBar
-        backgroundColor="#050808"
-        barStyle="light-content"
+        backgroundColor="#FFFFFF"
+        barStyle="dark-content"
       />
 
       <ScrollView
@@ -131,10 +141,7 @@ const SignupScreen = ({
         showsVerticalScrollIndicator={
           false
         }>
-
-        <Text style={styles.logo}>
-          HealthMate
-        </Text>
+  <Image source={logo} style={styles.logo} resizeMode="contain" />   
 
         <Text style={styles.heading}>
           Create Account
@@ -147,6 +154,7 @@ const SignupScreen = ({
             .toUpperCase() +
             role.slice(1)}
         </Text>
+
 
         <View style={styles.card}>
 
@@ -163,7 +171,7 @@ const SignupScreen = ({
           </View>
 
           <TextInput
-            placeholder="Full Name"
+            placeholder="Clinic Name"
             placeholderTextColor="#8F9B95"
             style={styles.input}
             value={name}
@@ -177,7 +185,15 @@ const SignupScreen = ({
             value={email}
             onChangeText={setEmail}
           />
-
+          {role === 'clinic' && (
+            <TextInput
+              placeholder="Clinic Address"
+              placeholderTextColor="#8F9B95"
+              style={styles.input}
+              value={address}
+              onChangeText={setAddress}
+            />
+          )}
           <TextInput
             placeholder="Password"
             placeholderTextColor="#8F9B95"
@@ -295,7 +311,7 @@ export default SignupScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0000',
+    backgroundColor: '#FFFFFF',
   },
 
   content: {
@@ -304,30 +320,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
 
-  logo: {
-    color: '#E63946',
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 14,
-  },
+ logo: {
+  width: SCREEN_WIDTH * 0.6,
+  height: (SCREEN_WIDTH * 0.5) / 1.62,
+  alignSelf: 'center',
+  marginBottom: 20,
+},
 
   heading: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 34,
     fontWeight: '800',
     marginBottom: 8,
   },
 
   subHeading: {
-    color: '#9B7474',
+    color: '#6B6B6B',
     fontSize: 15,
     marginBottom: 32,
   },
 
   card: {
-    backgroundColor: '#150505',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#3D1414',
+    borderColor: '#EDEDED',
     borderRadius: 24,
     padding: 20,
   },
@@ -348,13 +364,13 @@ const styles = StyleSheet.create({
   },
 
   input: {
-    backgroundColor: '#1A0808',
+    backgroundColor: '#F5F5F5',
     borderWidth: 1,
-    borderColor: '#3D1414',
+    borderColor: '#E0E0E0',
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     marginBottom: 14,
   },
 

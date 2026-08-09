@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../../services/api';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
+import { useCallback } from 'react';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface Appointment {
@@ -32,20 +34,19 @@ interface Appointment {
 
 // ── Theme ──────────────────────────────────────────────────────────────────────
 const C = {
-  bg: '#0A0A0A',
-  surface: '#131313',
-  surfaceHigh: '#1A1A1A',
-  border: '#2A2A2A',
+  bg: '#FFFFFF',
+  surface: '#FAFAFA',
+  surfaceHigh: '#F0F0F0',
+  border: '#EDEDED',
   borderAccent: 'rgba(210,40,40,0.30)',
   red: '#D22828',
-  redSoft: 'rgba(210,40,40,0.12)',
-  redMid: 'rgba(210,40,40,0.22)',
-  white: '#FFFFFF',
-  muted: '#777777',
-  dimmed: '#444444',
-  textSub: '#9A9A9A',
+  redSoft: 'rgba(210,40,40,0.08)',
+  redMid: 'rgba(210,40,40,0.15)',
+  white: '#1A1A1A',
+  muted: '#6B6B6B',
+  dimmed: '#9B9B9B',
+  textSub: '#5A5A5A',
 };
-
 // ── Helper Functions ──────────────────────────────────────────────────────────
 const formatDate = (dateString: string | undefined) => {
   if (!dateString) {
@@ -95,10 +96,17 @@ const ClinicAppointmentsScreen = ({ navigation }: { navigation: any }) => {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 420, useNativeDriver: true }).start();
-    fetchAppointments();
-  }, []);
+
+  
+ useEffect(() => {
+  Animated.timing(fadeAnim, { toValue: 1, duration: 420, useNativeDriver: true }).start();
+}, []);
+
+const refreshAppointments = useCallback(() => {
+  fetchAppointments();
+}, []);
+
+useAutoRefresh(refreshAppointments);
 
   useEffect(() => {
     filterAppointments();
@@ -229,7 +237,7 @@ const ClinicAppointmentsScreen = ({ navigation }: { navigation: any }) => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={C.bg} />
+     <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
         <View style={styles.header}>

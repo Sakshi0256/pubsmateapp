@@ -9,19 +9,57 @@ import {
   ActivityIndicator,
   RefreshControl,
   Animated,
+  Image, 
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../../services/api';
+import { launchImageLibrary } from 'react-native-image-picker';
+
 
 const ClinicProfileScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [clinic, setClinic] = useState<any>(null);
+  const [uploading, setUploading] = useState(false);
 
   const headerAnim = useRef(new Animated.Value(0)).current;
   const cardAnim = useRef(new Animated.Value(0)).current;
   const infoAnim = useRef(new Animated.Value(0)).current;
 
+
+const pickAndUploadPhoto = async () => {
+  const result = await launchImageLibrary({
+    mediaType: 'photo',
+    includeBase64: true,
+    quality: 0.6,
+    maxWidth: 600,
+    maxHeight: 600,
+  });
+
+  if (result.didCancel || !result.assets?.[0]) return;
+
+  const asset = result.assets[0];
+  const base64Image = `data:${asset.type};base64,${asset.base64}`;
+
+  try {
+    setUploading(true);
+    const token = await AsyncStorage.getItem('token');
+    const response = await API.put(
+      '/clinic/profile/photo',
+      { image: base64Image },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (response.data.success) {
+      setClinic((prev: any) => ({ ...prev, photo: response.data.photo }));
+    }
+  } catch (error: any) {
+    console.log('Photo upload error:', error?.response?.data || error);
+    Alert.alert('Error', error?.response?.data?.message || 'Upload failed');
+  } finally {
+    setUploading(false);
+  }
+};
   // ── Fetch Clinic Profile ──
   const fetchClinicProfile = async () => {
     try {
@@ -29,7 +67,7 @@ const ClinicProfileScreen = ({ navigation }: any) => {
       const response = await API.get('/clinic/profile', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       if (response.data.success) {
         setClinic(response.data.clinic);
       }
@@ -139,20 +177,29 @@ const ClinicProfileScreen = ({ navigation }: any) => {
             },
           ]}>
 
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {getInitials(clinic?.name || 'Clinic')}
-            </Text>
-          </View>
+      <TouchableOpacity onPress={pickAndUploadPhoto} disabled={uploading}>
+  <View style={styles.avatar}>
+    {clinic?.photo ? (
+      <Image source={{ uri: clinic.photo }} style={styles.avatarImage} />
+    ) : (
+      <Text style={styles.avatarText}>{getInitials(clinic?.name || 'Clinic')}</Text>
+    )}
+    {uploading && (
+      <View style={styles.avatarOverlay}>
+        <ActivityIndicator color="#FFFFFF" size="small" />
+      </View>
+    )}
+  </View>
+  <View style={styles.cameraBadge}>
+    <Text style={{ color: '#FFF', fontSize: 12 }}>✎</Text>
+  </View>
+</TouchableOpacity>
 
-          <Text style={styles.clinicName}>
-            {clinic?.name || 'Clinic'}
-          </Text>
+          <Text style={styles.clinicName} numberOfLines={2} adjustsFontSizeToFit>
+  {clinic?.name || 'Clinic'}
+</Text>
 
-          <Text style={styles.clinicType}>
-            {clinic?.hospitalName || 'Healthcare Clinic'}
-          </Text>
-
+         
         </Animated.View>
 
         {/* INFO SECTION */}
@@ -211,11 +258,11 @@ const ClinicProfileScreen = ({ navigation }: any) => {
         </Animated.View>
 
         {/* ACTIONS */}
-       <TouchableOpacity
-  style={styles.editButton}
-  onPress={() => navigation.navigate('EditClinicProfile', { clinic })}>
-  <Text style={styles.editButtonText}>Edit Profile</Text>
-</TouchableOpacity>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => navigation.navigate('EditClinicProfile', { clinic })}>
+          <Text style={styles.editButtonText}>Edit Profile</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.logoutButton}
@@ -234,14 +281,14 @@ export default ClinicProfileScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: '#FFFFFF',
   },
   center: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    color: '#888',
+    color: '#8A8A8A',
     fontSize: 14,
     marginTop: 12,
   },
@@ -253,34 +300,66 @@ const styles = StyleSheet.create({
     width: 280,
     height: 280,
     borderRadius: 140,
-    backgroundColor: 'rgba(168,213,186,0.05)',
+    backgroundColor: 'rgba(168,213,186,0.10)',
     top: -80,
     right: -80,
   },
+
+  avatarImage: {
+  width: 82,
+  height: 82,
+  borderRadius: 41,
+},
+avatarOverlay: {
+  ...StyleSheet.absoluteFillObject,
+  borderRadius: 41,
+  backgroundColor: 'rgba(0,0,0,0.4)',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+cameraBadge: {
+  position: 'absolute',
+  bottom: 12,
+  right: -4,
+  backgroundColor: '#D62828',
+  width: 24,
+  height: 24,
+  borderRadius: 12,
+  justifyContent: 'center',
+  alignItems: 'center',
+  borderWidth: 2,
+  borderColor: '#FFFFFF',
+},
   bgBlob2: {
     position: 'absolute',
     width: 220,
     height: 220,
     borderRadius: 110,
-    backgroundColor: 'rgba(168,213,186,0.03)',
+    backgroundColor: 'rgba(168,213,186,0.07)',
     bottom: 50,
     left: -60,
   },
   topHeader: {
     height: 160,
-    backgroundColor: '#0A1210',
+    backgroundColor: '#F0EDE9',
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
   },
   profileCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 18,
     marginTop: -55,
     borderRadius: 24,
     alignItems: 'center',
+     paddingHorizontal: 16, 
     paddingVertical: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: '#EDEDED',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   avatar: {
     width: 82,
@@ -294,40 +373,40 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#0A0A0A',
+    color: '#FFFFFF',
   },
   clinicName: {
-    fontSize: 24,
+    fontSize: 22, 
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     marginBottom: 4,
   },
   clinicType: {
     fontSize: 13,
-    color: '#B3B3B3',
+    color: '#6B6B6B',
   },
   infoContainer: {
     marginTop: 22,
     paddingHorizontal: 18,
   },
   infoItem: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FAFAFA',
     borderRadius: 18,
     paddingVertical: 16,
     paddingHorizontal: 18,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: '#EDEDED',
   },
   infoLabel: {
     fontSize: 12,
-    color: '#B3B3B3',
+    color: '#8A8A8A',
     marginBottom: 4,
   },
   infoValue: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#1A1A1A',
   },
   editButton: {
     backgroundColor: '#D62828',
@@ -343,7 +422,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   logoutButton: {
-    backgroundColor: 'rgba(239,68,68,0.12)',
+    backgroundColor: 'rgba(239,68,68,0.08)',
     marginHorizontal: 18,
     paddingVertical: 15,
     borderRadius: 16,

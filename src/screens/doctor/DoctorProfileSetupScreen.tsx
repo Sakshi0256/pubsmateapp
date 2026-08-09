@@ -13,8 +13,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import API from '../../services/api';
 
+
 const RED = '#E63946';
-const BG = '#0A0000';
+const BG = '#FFFFFF';
 
 const DoctorProfileScreen = ({ navigation }: any) => {
   const [doctor, setDoctor] = useState<any>(null);
@@ -206,7 +207,7 @@ export default DoctorProfileScreen;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG },
   loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: BG },
-  loaderText: { color: '#8F8F8F', fontSize: 13 },
+  loaderText: { color: '#6B6B6B', fontSize: 13 },
 
   topHeader: {
     height: 130,
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 28,
   },
   profileCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     marginTop: -50,
     borderRadius: 20,
@@ -223,7 +224,12 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: '#EDEDED',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   avatar: {
     width: 68,
@@ -234,13 +240,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  avatarText: { fontSize: 22, fontWeight: '800', color: '#0A0000' },
-  name: { fontSize: 18, fontWeight: '800', color: '#FFFFFF', marginBottom: 3 },
-  specialization: { fontSize: 12.5, color: '#8F8F8F' },
+  avatarText: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
+  name: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', marginBottom: 3 },
+  specialization: { fontSize: 12.5, color: '#6B6B6B' },
   hospitalChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(230,57,70,0.1)',
+    backgroundColor: 'rgba(230,57,70,0.08)',
     borderWidth: 1,
     borderColor: 'rgba(230,57,70,0.25)',
     borderRadius: 20,
@@ -258,37 +264,37 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   statBox: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FAFAFA',
     flex: 1,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: '#EDEDED',
   },
   statNumber: { fontSize: 18, fontWeight: '800', color: RED, marginBottom: 3 },
-  statLabel: { fontSize: 11, color: '#8F8F8F', fontWeight: '600' },
+  statLabel: { fontSize: 11, color: '#8A8A8A', fontWeight: '600' },
 
   infoContainer: { marginTop: 18, paddingHorizontal: 16 },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: '#EDEDED',
   },
   infoIcon: { marginRight: 10, marginTop: 2 },
   infoTextBlock: { flex: 1 },
-  label: { fontSize: 11, color: '#8F8F8F', marginBottom: 3, fontWeight: '600' },
-  value: { fontSize: 13.5, fontWeight: '700', color: '#FFFFFF' },
+  label: { fontSize: 11, color: '#8A8A8A', marginBottom: 3, fontWeight: '600' },
+  value: { fontSize: 13.5, fontWeight: '700', color: '#1A1A1A' },
 
   logoutButton: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(230,57,70,0.1)',
+    backgroundColor: 'rgba(230,57,70,0.08)',
     marginHorizontal: 16,
     paddingVertical: 13,
     borderRadius: 14,
@@ -307,7 +313,7 @@ const styles = StyleSheet.create({
     width: 260,
     height: 260,
     borderRadius: 130,
-    backgroundColor: 'rgba(230,57,70,0.04)',
+    backgroundColor: 'rgba(230,57,70,0.05)',
     top: -80,
     right: -80,
   },
@@ -316,7 +322,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: 'rgba(230,57,70,0.03)',
+    backgroundColor: 'rgba(230,57,70,0.04)',
     bottom: 50,
     left: -60,
   },

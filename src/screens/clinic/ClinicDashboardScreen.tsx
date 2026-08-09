@@ -8,25 +8,27 @@ import {
   Animated,
   StatusBar,
   Platform,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../../services/api';
 import { useFocusEffect } from '@react-navigation/native';
 
+
 // ── Theme ──────────────────────────────────────────────────────────────────────
 const C = {
-  bg: '#0A0A0A',
-  surface: '#131313',
-  surfaceHigh: '#1A1A1A',
-  border: '#2A2A2A',
+  bg: '#FFFFFF',
+  surface: '#FAFAFA',
+  surfaceHigh: '#F0F0F0',
+  border: '#EDEDED',
   borderAccent: 'rgba(210,40,40,0.30)',
   red: '#D22828',
-  redSoft: 'rgba(210,40,40,0.12)',
-  redMid: 'rgba(210,40,40,0.22)',
-  white: '#FFFFFF',
-  muted: '#777777',
-  dimmed: '#444444',
-  textSub: '#9A9A9A',
+  redSoft: 'rgba(210,40,40,0.08)',
+  redMid: 'rgba(210,40,40,0.15)',
+  white: '#1A1A1A',
+  muted: '#6B6B6B',
+  dimmed: '#9B9B9B',
+  textSub: '#5A5A5A',
 };
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
@@ -43,7 +45,7 @@ const ClinicDashboardScreen = ({ navigation }: any) => {
   });
   const [appointments, setAppointments] = useState<any[]>([]);
    const [clinicName, setClinicName] = useState('Clinic');
-
+const [clinicPhoto, setClinicPhoto] = useState<string | null>(null);   // add
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -71,6 +73,7 @@ const ClinicDashboardScreen = ({ navigation }: any) => {
       });
       if (response.data.success) {
         setClinicName(response.data.clinic?.name || 'Clinic');
+         setClinicPhoto(response.data.clinic?.photo || null);
       }
     } catch (error) {
       console.log('Clinic Profile Error:', error);
@@ -100,6 +103,7 @@ const ClinicDashboardScreen = ({ navigation }: any) => {
     useCallback(() => {
       getDashboardStats();
       getTodayAppointments();
+      fetchClinicProfile();
     }, []),
   );
 
@@ -149,7 +153,7 @@ const ClinicDashboardScreen = ({ navigation }: any) => {
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={C.bg} />
+    <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
       <Animated.ScrollView
         style={{ flex: 1, opacity: fadeAnim }}
@@ -159,21 +163,22 @@ const ClinicDashboardScreen = ({ navigation }: any) => {
         {/* ── HEADER ── */}
         <View style={styles.header}>
           <View style={styles.logoRow}>
-            <View style={styles.logoBox}>
-              <Text style={styles.logoP}>P</Text>
-              <Text style={styles.logoPlus}>+</Text>
-            </View>
+           <View style={styles.logoBox}>
+  {clinicPhoto ? (
+    <Image source={{ uri: clinicPhoto }} style={styles.logoImage} />
+  ) : (
+    <>
+      <Text style={styles.logoP}>P</Text>
+      <Text style={styles.logoPlus}>+</Text>
+    </>
+  )}
+</View>
             <View>
               <Text style={styles.brandName}>{clinicName}</Text>
-              <Text style={styles.brandSub}>Clinic Dashboard</Text>
+              {/* <Text style={styles.brandSub}>Clinic Dashboard</Text> */}
             </View>
           </View>
-          <TouchableOpacity
-            style={styles.bookBtn}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('BookAppointment')}>
-            <Text style={styles.bookBtnTxt}>+ Book Appointment</Text>
-          </TouchableOpacity>
+         
         </View>
 
         {/* ── STATS ── */}
@@ -253,7 +258,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
+    overflow: 'hidden',   // add
   },
+  logoImage: {
+  width: 38,
+  height: 38,
+  borderRadius: 10,
+},
   logoP: {
     color: '#fff',
     fontWeight: '900',
@@ -269,7 +280,7 @@ const styles = StyleSheet.create({
   brandName: {
     color: C.white,
     fontWeight: '800',
-    fontSize: 17,
+    fontSize: 12,
     letterSpacing: -0.4,
   },
   brandSub: {

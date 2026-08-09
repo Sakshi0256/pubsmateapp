@@ -10,9 +10,13 @@ import {
   ActivityIndicator,
   Modal,
   FlatList,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import API from '../../services/api'; // ✅ Use API instance
+import DateTimePicker from '@react-native-community/datetimepicker';
+import API from '../../services/api';
+
+const MAX_DAYS_AHEAD = 20;
 
 const BookAppointmentScreen = ({ route, navigation }: any) => {
   const preselectedDoctorId = route?.params?.doctorId;
@@ -21,20 +25,22 @@ const BookAppointmentScreen = ({ route, navigation }: any) => {
   const [patientName, setPatientName] = useState('');
   const [mobile, setMobile] = useState('');
   const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
-  const [slot, setSlot] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState<{ id: string; date: string; time: string } | null>(null);
   const [slots, setSlots] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
 
+  // ── Date filter ──
+  const [filterDate, setFilterDate] = useState<string | null>(null); // "YYYY-MM-DD"
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
   // ── Fetch Doctors ──
   const getDoctors = async () => {
     try {
-      const response = await API.get('/doctors');
-      console.log('📋 Doctors response:', response.data);
+      const response = await API.get('/clinic/doctors');
       setDoctors(response.data.doctors || []);
 
-      // If preselected doctor, select it
       if (preselectedDoctorId && response.data.doctors) {
         const found = response.data.doctors.find(
           (d: any) => d._id === preselectedDoctorId
@@ -47,37 +53,63 @@ const BookAppointmentScreen = ({ route, navigation }: any) => {
   };
 
   // ── Fetch Slots for selected doctor ──
-  const getSlots = async () => {
-    if (!selectedDoctor) return;
-    try {
-      const response = await API.get(`/slots/doctor/${selectedDoctor._id}`);
-      if (response.data.success) {
-        setSlots(response.data.slots || []);
-        console.log('📋 Slots for doctor:', response.data.slots.length);
-      }
-    } catch (error) {
-      console.log('Get Slots Error:', error);
-    }
-  };
+  // const getSlots = async () => {
+  //   if (!selectedDoctor) return;
+  //   try {
+  //     const response = await API.get(`/slots/doctor/${selectedDoctor._id}`);
+  //     if (response.data.success) {
+  //       setSlots(response.data.slots || []);
+  //     }
+  //   } catch (error) {
+  //     console.log('Get Slots Error:', error);
+  //   }
+  // };
 
-  // ── Load doctors on mount ──
+  const getSlots = async () => {
+  if (!selectedDoctor) return;
+
+  try {
+    const response = await API.get(`/slots/doctor/${selectedDoctor._id}`);
+
+    console.log("Selected Doctor ID:", selectedDoctor._id);
+console.log("Selected Doctor Name:", selectedDoctor.name);
+
+    console.log("========== API ==========");
+    console.log(response.data);
+    console.log("Total:", response.data.slots?.length);
+
+    console.log(
+      "Dates:",
+      [...new Set(response.data.slots.map((s: any) => s.slotDate))]
+    );
+
+    if (response.data.success) {
+      setSlots(response.data.slots || []);
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
+
   useEffect(() => {
     getDoctors();
   }, []);
 
-  // ── Reload slots when selected doctor changes ──
   useEffect(() => {
     if (selectedDoctor) {
       getSlots();
+      setSelectedSlot(null);
+      setFilterDate(null);
     }
   }, [selectedDoctor]);
 
-  // ── If preselectedSlot is provided, set it ──
   useEffect(() => {
-    if (preselectedSlot) setSlot(preselectedSlot);
+    if (preselectedSlot) {
+      setSelectedSlot((prev) => (prev ? prev : { id: '', date: '', time: preselectedSlot }));
+    }
   }, [preselectedSlot]);
 
-  // ── Filter slots (only future available slots) ──
+  // ── Filter: available, future (date+time), within next 15 days ──
   const getFilteredSlots = () => {
     if (!selectedDoctor) return [];
 
@@ -86,20 +118,28 @@ const BookAppointmentScreen = ({ route, navigation }: any) => {
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
 
+    const maxDate = new Date();
+    maxDate.setDate(maxDate.getDate() + MAX_DAYS_AHEAD);
+    const maxDateStr = maxDate.toISOString().split('T')[0];
+
     return slots.filter((item) => {
       const doctorId = item.doctor?._id || item.doctor;
       if (item.status !== 'available') return false;
       if (String(doctorId) !== String(selectedDoctor._id)) return false;
 
       const slotDate = item.slotDate; // "YYYY-MM-DD"
-      if (slotDate < todayStr) return false; // Past date → hide
+      if (slotDate < todayStr) return false;
+      if (slotDate > maxDateStr) return false;
 
-      if (slotDate > todayStr) return true; // Future date → show
+      // Date filter (from picker)
+      if (filterDate && slotDate !== filterDate) return false;
 
-      // Today: check time (only future slots)
-      const timeStr = item.slotTime; // "09:00 AM"
+      if (slotDate > todayStr) return true;
+
+      // Today: check time
+      const timeStr = item.slotTime;
       const timeParts = timeStr.match(/(\d+):(\d+)\s*([AP]M)/i);
-      if (!timeParts) return true; // if can't parse, show (safe)
+      if (!timeParts) return true;
 
       let hour = parseInt(timeParts[1]);
       const minute = parseInt(timeParts[2]);
@@ -109,37 +149,71 @@ const BookAppointmentScreen = ({ route, navigation }: any) => {
       const slotMinutes = hour * 60 + minute;
       const currentMinutes = currentHour * 60 + currentMinute;
 
-      return slotMinutes > currentMinutes; // Only future slots
+      return slotMinutes > currentMinutes;
     });
   };
 
-  // ── Get unique slot times ──
-  const getUniqueSlotTimes = () => {
+  // ── Group filtered slots by date ──
+  const getGroupedSlots = () => {
     const filtered = getFilteredSlots();
-    const uniqueTimes = new Set();
-    return filtered.filter((slot) => {
-      if (!uniqueTimes.has(slot.slotTime)) {
-        uniqueTimes.add(slot.slotTime);
-        return true;
-      }
-      return false;
+    const grouped: Record<string, any[]> = {};
+    filtered.forEach((item) => {
+      if (!grouped[item.slotDate]) grouped[item.slotDate] = [];
+      grouped[item.slotDate].push(item);
     });
+    console.log("Filtered Slots:", filtered);
+
+    return Object.keys(grouped)
+      .sort()
+      .map((date) => ({ date, items: grouped[date] }));
+  };
+
+  const formatDateLabel = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    if (dateStr === todayStr) return 'Today';
+    if (dateStr === tomorrowStr) return 'Tomorrow';
+
+    return date.toLocaleDateString('en-IN', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+    });
+  };
+
+  const getMinMaxDate = () => {
+    const min = new Date();
+    const max = new Date();
+    max.setDate(max.getDate() + MAX_DAYS_AHEAD);
+    return { min, max };
+  };
+
+  const onDatePicked = (event: any, date?: Date) => {
+    console.log("Picked Date =", date);
+    setShowDatePicker(Platform.OS === 'ios'); // iOS keeps picker open till manually dismissed if you want, else close
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (event.type === 'dismissed' || !date) return;
+
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    setFilterDate(`${yyyy}-${mm}-${dd}`);
   };
 
   // ── Book Appointment ──
   const handleSave = async () => {
-    if (!patientName.trim() || !mobile.trim() || !selectedDoctor || !slot.trim()) {
-      Alert.alert('Error', 'Please fill all fields');
+    if (!patientName.trim() || !mobile.trim() || !selectedDoctor || !selectedSlot) {
+      Alert.alert('Error', 'Please fill all fields and select a slot');
       return;
     }
 
     try {
       setLoading(true);
-
-      // Find the selected slot to get date
-      const selectedSlotData = slots.find(
-        (s) => s.slotTime === slot && s.doctor?._id === selectedDoctor._id
-      );
 
       const response = await API.post('/clinic/appointments', {
         patientName,
@@ -147,8 +221,8 @@ const BookAppointmentScreen = ({ route, navigation }: any) => {
         doctorId: selectedDoctor._id,
         doctor: selectedDoctor._id,
         doctorName: selectedDoctor.name,
-        slotTime: slot,
-        slotDate: selectedSlotData?.slotDate || new Date().toISOString().split('T')[0],
+        slotTime: selectedSlot.time,
+        slotDate: selectedSlot.date || new Date().toISOString().split('T')[0],
       });
 
       if (response.data.success) {
@@ -164,7 +238,13 @@ const BookAppointmentScreen = ({ route, navigation }: any) => {
     }
   };
 
-  const filteredSlots = getUniqueSlotTimes();
+  const groupedSlots = getGroupedSlots();
+  console.log("========== RENDER ==========");
+console.log("selectedDoctor =", selectedDoctor?._id);
+console.log("filterDate =", filterDate);
+console.log("slots state =", slots.length);
+console.log("groupedSlots =", groupedSlots.length);
+  const { min: minDate, max: maxDate } = getMinMaxDate();
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -191,7 +271,13 @@ const BookAppointmentScreen = ({ route, navigation }: any) => {
         keyboardType="phone-pad"
         style={styles.input}
         value={mobile}
-        onChangeText={setMobile}
+        onChangeText={(text) => {
+          const numericText = text.replace(/[^0-9]/g, '');
+          if (numericText.length <= 10) {
+            setMobile(numericText);
+          }
+        }}
+        maxLength={10}
       />
 
       {/* Select Doctor (Dropdown) */}
@@ -227,7 +313,6 @@ const BookAppointmentScreen = ({ route, navigation }: any) => {
                   ]}
                   onPress={() => {
                     setSelectedDoctor(item);
-                    setSlot(''); // Reset slot when doctor changes
                     setModalVisible(false);
                   }}
                 >
@@ -250,34 +335,80 @@ const BookAppointmentScreen = ({ route, navigation }: any) => {
         </View>
       </Modal>
 
-      {/* Select Slot */}
-      <Text style={styles.label}>Select Slot</Text>
+      {/* Select Slot — grouped by date */}
+      <View style={styles.slotHeaderRow}>
+        <Text style={styles.label}>Select Date & Slot</Text>
+        <Text style={styles.slotWindowNote}>Next {MAX_DAYS_AHEAD} days</Text>
+      </View>
+
+      {/* Date Picker row */}
+      <View style={styles.dateFilterRow}>
+        <TouchableOpacity
+          style={styles.datePickerBtn}
+          onPress={() => setShowDatePicker(true)}
+          disabled={!selectedDoctor}
+        >
+          <Text style={styles.datePickerBtnText}>
+            {filterDate ? formatDateLabel(filterDate) : 'Jump to date'}
+          </Text>
+        </TouchableOpacity>
+
+        {filterDate ? (
+          <TouchableOpacity style={styles.clearDateBtn} onPress={() => setFilterDate(null)}>
+            <Text style={styles.clearDateBtnText}>Show All</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={filterDate ? new Date(filterDate) : minDate}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          minimumDate={minDate}
+          maximumDate={maxDate}
+          onChange={onDatePicked}
+        />
+      )}
+
+      {/* <Text style={{ color: 'red', fontSize: 18 }}>
+  Group Count: {groupedSlots.length}
+</Text> */}
+
       {selectedDoctor ? (
-        filteredSlots.length > 0 ? (
-          <View style={styles.slotContainer}>
-            {filteredSlots.map((item, index) => (
-              <TouchableOpacity
-                key={item._id || index}
-                style={[
-                  styles.slotButton,
-                  slot === item.slotTime && styles.selectedSlot,
-                ]}
-                onPress={() => setSlot(item.slotTime)}
-              >
-                <Text
-                  style={[
-                    styles.slotText,
-                    slot === item.slotTime && styles.selectedSlotText,
-                  ]}
-                >
-                  {item.slotTime}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+        groupedSlots.length > 0 ? (
+          groupedSlots.map(({ date, items }) => (
+            <View key={date} style={styles.dateGroup}>
+              <Text style={styles.dateLabel}>{formatDateLabel(date)}</Text>
+              <View style={styles.slotContainer}>
+                {items.map((item, index) => {
+                  const isSelected =
+                    selectedSlot?.id === item._id ||
+                    (!selectedSlot?.id && selectedSlot?.date === date && selectedSlot?.time === item.slotTime);
+                  return (
+                    <TouchableOpacity
+                      key={item._id || index}
+                      style={[styles.slotButton, isSelected && styles.selectedSlot]}
+                      onPress={() =>
+                        setSelectedSlot({ id: item._id, date: item.slotDate, time: item.slotTime })
+                      }
+                    >
+                      <Text style={[styles.slotText, isSelected && styles.selectedSlotText]}>
+                        {item.slotTime}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          ))
         ) : (
           <View style={styles.noSlotsCard}>
-            <Text style={styles.noSlotsText}>No available slots for this doctor</Text>
+            <Text style={styles.noSlotsText}>
+              {filterDate
+                ? `No available slots for ${formatDateLabel(filterDate)}`
+                : `No available slots for this doctor in the next ${MAX_DAYS_AHEAD} days`}
+            </Text>
           </View>
         )
       ) : (
@@ -285,6 +416,18 @@ const BookAppointmentScreen = ({ route, navigation }: any) => {
           <Text style={styles.noSlotsText}>Please select a doctor first</Text>
         </View>
       )}
+
+      {/* Selected slot confirmation */}
+      {selectedSlot ? (
+        <View style={styles.confirmCard}>
+          <Text style={styles.confirmText}>
+            Booking for{' '}
+            <Text style={styles.confirmHighlight}>
+              {selectedSlot.date ? formatDateLabel(selectedSlot.date) : 'Today'} · {selectedSlot.time}
+            </Text>
+          </Text>
+        </View>
+      ) : null}
 
       {/* Book Button */}
       <TouchableOpacity
@@ -304,17 +447,16 @@ const BookAppointmentScreen = ({ route, navigation }: any) => {
 
 export default BookAppointmentScreen;
 
-// ── Styles (unchanged) ──
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: '#FFFFFF',
     padding: 20,
   },
   headerCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FAFAFA',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: '#EDEDED',
     borderRadius: 24,
     padding: 20,
     marginBottom: 24,
@@ -322,12 +464,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     marginBottom: 8,
     letterSpacing: -0.5,
   },
   subtitle: {
-    color: '#B3B3B3',
+    color: '#6B6B6B',
     fontSize: 14,
   },
   label: {
@@ -337,54 +479,54 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#F5F5F5',
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: '#E0E0E0',
     fontSize: 15,
-    color: '#FFFFFF',
+    color: '#1A1A1A',
   },
   dropdownButton: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#F5F5F5',
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: '#E0E0E0',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   dropdownText: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 15,
   },
   dropdownPlaceholder: {
-    color: '#666',
+    color: '#9B9B9B',
     fontSize: 15,
   },
   dropdownArrow: {
-    color: '#666',
+    color: '#9B9B9B',
     fontSize: 12,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
     maxHeight: '80%',
   },
   modalTitle: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 16,
@@ -393,19 +535,19 @@ const styles = StyleSheet.create({
   doctorItem: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: '#EDEDED',
   },
   doctorItemSelected: {
-    backgroundColor: 'rgba(214, 40, 40, 0.15)',
+    backgroundColor: 'rgba(214, 40, 40, 0.08)',
     borderRadius: 12,
   },
   doctorName: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 16,
     fontWeight: '600',
   },
   doctorSpecialty: {
-    color: '#888',
+    color: '#8A8A8A',
     fontSize: 13,
     marginTop: 2,
   },
@@ -416,37 +558,90 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   closeModalBtn: {
-    backgroundColor: '#333',
+    backgroundColor: '#F0F0F0',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 12,
   },
   closeModalText: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 16,
     fontWeight: '600',
+  },
+  slotHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  slotWindowNote: {
+    fontSize: 12,
+    color: '#8A8A8A',
+    fontWeight: '600',
+  },
+  dateFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  datePickerBtn: {
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  datePickerBtnText: {
+    color: '#1A1A1A',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  clearDateBtn: {
+    backgroundColor: 'rgba(214, 40, 40, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(214, 40, 40, 0.25)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  clearDateBtnText: {
+    color: '#D62828',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  dateGroup: {
+    marginBottom: 16,
+  },
+  dateLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginTop: 10,
+    marginBottom: 8,
   },
   slotContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 20,
     gap: 8,
   },
   slotButton: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#F5F5F5',
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: '#E0E0E0',
   },
   selectedSlot: {
     backgroundColor: '#D62828',
     borderColor: '#D62828',
   },
   slotText: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontWeight: '600',
     fontSize: 13,
   },
@@ -455,15 +650,33 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   noSlotsCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#F5F5F5',
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
     marginBottom: 20,
   },
   noSlotsText: {
-    color: '#888',
+    color: '#8A8A8A',
     fontSize: 14,
+    textAlign: 'center',
+  },
+  confirmCard: {
+    backgroundColor: 'rgba(214, 40, 40, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(214, 40, 40, 0.2)',
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  confirmText: {
+    fontSize: 13,
+    color: '#6B6B6B',
+  },
+  confirmHighlight: {
+    color: '#D62828',
+    fontWeight: '700',
   },
   button: {
     backgroundColor: '#D62828',
@@ -479,7 +692,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   emptyText: {
-    color: '#888',
+    color: '#8A8A8A',
     fontSize: 14,
     textAlign: 'center',
     padding: 20,

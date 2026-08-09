@@ -100,20 +100,88 @@ const AddDoctorScreen = ({ navigation }: any) => {
   }, []);
 
   // ── Create Doctor ──
+  // const handleCreateDoctor = async () => {
+  //   if (!name || !email || !password) {
+  //     Alert.alert('Error', 'Please fill required fields');
+  //     return;
+  //   }
+
+  //    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  //   if (!emailRegex.test(email)) {
+  //     Alert.alert('Error', 'Please enter a valid email address');
+  //     return;
+  //   }
+
+  //   try {
+  //     setLoading(true);
+
+  //     const response = await API.post('/auth/signup', {
+  //       name,
+  //       email,
+  //       password,
+  //       role: 'doctor',
+  //       specialty,
+  //       qualification,
+  //       experience,
+  //       consultationFee: Number(consultationFee),
+  //       hospitalName,
+  //       about,
+  //       timing: {
+  //         morning: {
+  //           start: morningStart,
+  //           end: morningEnd,
+  //           enabled: morningEnabled,
+  //         },
+  //         evening: {
+  //           start: eveningStart,
+  //           end: eveningEnd,
+  //           enabled: eveningEnabled,
+  //         },
+  //         slotDuration: Number(slotDuration),
+  //         break: {
+  //           start: breakStart,
+  //           end: breakEnd,
+  //           enabled: breakEnabled,
+  //         },
+  //       },
+  //       workingDays: workingDays,
+  //     });
+
+  //     if (response.data.success) {
+  //       Alert.alert('Success', 'Doctor created successfully');
+  //       navigation.goBack();
+  //       navigation.getParent()?.setParams({ refresh: Date.now() });
+  //     }
+  //   } catch (error: any) {
+  //     console.log(error);
+  //     Alert.alert('Error', error?.response?.data?.message || 'Something went wrong');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const handleCreateDoctor = async () => {
-    if (!name || !email || !password) {
-      Alert.alert('Error', 'Please fill required fields');
-      return;
-    }
+  if (!name || !email || !password) {
+    Alert.alert('Error', 'Please fill required fields');
+    return;
+  }
 
-    try {
-      setLoading(true);
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    Alert.alert('Error', 'Please enter a valid email address');
+    return;
+  }
 
-      const response = await API.post('/auth/signup', {
+  try {
+    setLoading(true);
+    const token = await AsyncStorage.getItem('token');   // add
+
+    const response = await API.post(
+      '/clinic/doctors',                                  // changed from /auth/signup
+      {
         name,
         email,
         password,
-        role: 'doctor',
         specialty,
         qualification,
         experience,
@@ -121,38 +189,28 @@ const AddDoctorScreen = ({ navigation }: any) => {
         hospitalName,
         about,
         timing: {
-          morning: {
-            start: morningStart,
-            end: morningEnd,
-            enabled: morningEnabled,
-          },
-          evening: {
-            start: eveningStart,
-            end: eveningEnd,
-            enabled: eveningEnabled,
-          },
+          morning: { start: morningStart, end: morningEnd, enabled: morningEnabled },
+          evening: { start: eveningStart, end: eveningEnd, enabled: eveningEnabled },
           slotDuration: Number(slotDuration),
-          break: {
-            start: breakStart,
-            end: breakEnd,
-            enabled: breakEnabled,
-          },
+          break: { start: breakStart, end: breakEnd, enabled: breakEnabled },
         },
         workingDays: workingDays,
-      });
+      },
+      { headers: { Authorization: `Bearer ${token}` } }    // add auth header
+    );
 
-      if (response.data.success) {
-        Alert.alert('Success', 'Doctor created successfully');
-        navigation.goBack();
-        navigation.getParent()?.setParams({ refresh: Date.now() });
-      }
-    } catch (error: any) {
-      console.log(error);
-      Alert.alert('Error', error?.response?.data?.message || 'Something went wrong');
-    } finally {
-      setLoading(false);
+    if (response.data.success) {
+      Alert.alert('Success', 'Doctor created successfully');
+      navigation.goBack();
+      navigation.getParent()?.setParams({ refresh: Date.now() });
     }
-  };
+  } catch (error: any) {
+    console.log(error);
+    Alert.alert('Error', error?.response?.data?.message || 'Something went wrong');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const toggleWorkingDay = (day: number) => {
     if (workingDays.includes(day)) {
@@ -185,6 +243,9 @@ const AddDoctorScreen = ({ navigation }: any) => {
         placeholderTextColor="#888"
         value={email}
         onChangeText={setEmail}
+        maxLength={100} // ✅ Limit email length
+        autoCapitalize="none"
+        keyboardType="email-address"
       />
 
       <TextInput
@@ -451,13 +512,13 @@ export default AddDoctorScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: '#FFFFFF',
     padding: 20,
   },
   title: {
     fontSize: 30,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     marginBottom: 25,
   },
   sectionTitle: {
@@ -470,17 +531,17 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#B3B3B3',
+    color: '#6B6B6B',
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#151515',
+    backgroundColor: '#F5F5F5',
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: '#E0E0E0',
     borderRadius: 16,
     paddingHorizontal: 15,
     paddingVertical: 14,
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     marginBottom: 15,
   },
   autoFillInput: {
@@ -488,9 +549,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   dropdownButton: {
-    backgroundColor: '#151515',
+    backgroundColor: '#F5F5F5',
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: '#E0E0E0',
     borderRadius: 16,
     paddingHorizontal: 15,
     paddingVertical: 14,
@@ -500,31 +561,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dropdownText: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 15,
   },
   dropdownPlaceholder: {
-    color: '#888',
+    color: '#9B9B9B',
     fontSize: 15,
   },
   dropdownArrow: {
-    color: '#888',
+    color: '#9B9B9B',
     fontSize: 12,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
     maxHeight: '80%',
   },
   modalTitle: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 16,
@@ -534,32 +595,32 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: '#EDEDED',
   },
   specialtyItemSelected: {
-    backgroundColor: 'rgba(214, 40, 40, 0.15)',
+    backgroundColor: 'rgba(214, 40, 40, 0.08)',
     borderRadius: 8,
   },
   specialtyItemText: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 15,
   },
   closeModalBtn: {
-    backgroundColor: '#333',
+    backgroundColor: '#F0F0F0',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 12,
   },
   closeModalText: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 16,
     fontWeight: '600',
   },
   shiftContainer: {
-    backgroundColor: '#151515',
+    backgroundColor: '#F5F5F5',
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: '#E0E0E0',
     borderRadius: 16,
     padding: 15,
     marginBottom: 15,
@@ -571,7 +632,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   shiftTitle: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -585,7 +646,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   timeSeparator: {
-    color: '#888',
+    color: '#9B9B9B',
     fontSize: 14,
   },
   daysRow: {
@@ -598,16 +659,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: '#2A2A2A',
+    backgroundColor: '#F0F0F0',
     borderWidth: 1,
-    borderColor: '#3A3A3A',
+    borderColor: '#E0E0E0',
   },
   dayButtonActive: {
     backgroundColor: '#D62828',
     borderColor: '#D62828',
   },
   dayButtonText: {
-    color: '#888',
+    color: '#9B9B9B',
     fontWeight: '600',
   },
   dayButtonTextActive: {

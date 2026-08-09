@@ -106,12 +106,12 @@ const DoctorSlotsScreen = ({ route }: any) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
+   <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* ── Custom Header ── */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+        <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
           {doctorName}
@@ -152,7 +152,7 @@ export default DoctorSlotsScreen;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: '#FFFFFF',
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
   },
   header: {
@@ -161,15 +161,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: '#EDEDED',
   },
   backBtn: {
     padding: 4,
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 18,
     fontWeight: '700',
     flex: 1,
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    color: '#888',
+    color: '#8A8A8A',
     marginTop: 12,
     fontSize: 14,
   },
@@ -193,13 +193,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   emptyTitle: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 20,
     fontWeight: '700',
     marginTop: 16,
   },
   emptySub: {
-    color: '#888',
+    color: '#8A8A8A',
     fontSize: 14,
     textAlign: 'center',
     marginTop: 8,
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   card: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -219,7 +219,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: '#EDEDED',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
   cardDisabled: {
     opacity: 0.4,
@@ -228,13 +233,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dateText: {
-    color: '#B3B3B3',
+    color: '#6B6B6B',
     fontSize: 13,
     fontWeight: '500',
     marginBottom: 4,
   },
   timeText: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 18,
     fontWeight: '700',
   },
@@ -242,15 +247,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: 'rgba(34,197,94,0.15)',
+    backgroundColor: 'rgba(34,197,94,0.12)',
   },
   statusAvailable: {
-    backgroundColor: 'rgba(34,197,94,0.15)',
+    backgroundColor: 'rgba(34,197,94,0.12)',
   },
   statusText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#22C55E',
+    color: '#16A34A',
     textTransform: 'capitalize',
   },
 });

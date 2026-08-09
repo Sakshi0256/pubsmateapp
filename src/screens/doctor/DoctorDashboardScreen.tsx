@@ -225,13 +225,13 @@ const DoctorDashboardScreen = ({ navigation }: any) => {
 export default DoctorDashboardScreen;
 
 const RED = '#E63946';
-const BG = '#0A0000';
+const BG = '#FFFFFF';
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: BG },
   container: { flex: 1 },
   loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: BG },
-  loaderText: { color: '#8F8F8F', fontSize: 13 },
+  loaderText: { color: '#6B6B6B', fontSize: 13 },
 
   scrollContent: {
     paddingHorizontal: 16,
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
 
   // Header
   headerCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FAFAFA',
     borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 14,
@@ -250,9 +250,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: '#EDEDED',
   },
-  greeting: { fontSize: 11, color: '#8F8F8F', marginBottom: 2, fontWeight: '500' },
+  greeting: { fontSize: 11, color: '#8A8A8A', marginBottom: 2, fontWeight: '500' },
   clinicRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
   clinicName: {
     fontSize: 11,
@@ -262,14 +262,14 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
-  doctorName: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  doctorName: { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
   profileCircle: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(230,57,70,0.15)',
+    backgroundColor: 'rgba(230,57,70,0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(230,57,70,0.35)',
+    borderColor: 'rgba(230,57,70,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -283,16 +283,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   statCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FAFAFA',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: '#EDEDED',
     flex: 1,
     borderRadius: 12,
     paddingVertical: 10,
     alignItems: 'center',
   },
   statNumber: { fontSize: 16, fontWeight: '800', color: RED, marginBottom: 2 },
-  statLabel: { fontSize: 10, color: '#8F8F8F', fontWeight: '600' },
+  statLabel: { fontSize: 10, color: '#8A8A8A', fontWeight: '600' },
 
   // Section header
   sectionRow: {
@@ -301,12 +301,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.2 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.2 },
   sectionCount: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#8F8F8F',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    color: '#8A8A8A',
+    backgroundColor: '#F0F0F0',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
@@ -314,21 +314,26 @@ const styles = StyleSheet.create({
 
   // Appointment card (compact)
   appointmentCard: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: '#EDEDED',
     marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   avatarSmall: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(230,57,70,0.12)',
+    backgroundColor: 'rgba(230,57,70,0.10)',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 1,
@@ -342,16 +347,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
-  patientName: { fontSize: 13, fontWeight: '700', color: '#FFFFFF', flex: 1, marginRight: 8 },
+  patientName: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', flex: 1, marginRight: 8 },
 
   metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2 },
-  metaText: { fontSize: 11, color: '#8F8F8F', marginLeft: 4 },
+  metaText: { fontSize: 11, color: '#8A8A8A', marginLeft: 4 },
   metaTimeText: { fontSize: 11, color: RED, fontWeight: '700', marginLeft: 3 },
   metaDot: {
     width: 3,
     height: 3,
     borderRadius: 2,
-    backgroundColor: '#4A4A4A',
+    backgroundColor: '#C4C4C4',
     marginHorizontal: 6,
   },
 
@@ -363,12 +368,12 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 9.5, fontWeight: '700', textTransform: 'capitalize' },
 
   emptyCard: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: '#FAFAFA',
     borderRadius: 12,
     paddingVertical: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: '#EDEDED',
   },
-  emptyText: { fontSize: 12, color: '#5C5C5C', marginTop: 6, fontWeight: '600' },
+  emptyText: { fontSize: 12, color: '#9B9B9B', marginTop: 6, fontWeight: '600' },
 });
