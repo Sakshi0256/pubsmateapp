@@ -11,6 +11,7 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import API from '../../services/api';
@@ -51,36 +52,80 @@ const EditClinicProfileScreen = ({ route, navigation }: any) => {
       }
     } catch (error) {
       console.log('Error fetching profile:', error);
-      Alert.alert('Error', 'Failed to load profile data');
+      showAlert('Error', 'Failed to load profile data');
     }
   };
 
   const handleSave = async () => {
-    if (!name.trim()) {
-      Alert.alert('Error', 'Clinic name is required');
+    // ── 1. Trim all inputs ──
+    const trimmedName = name.trim();
+    const trimmedPhone = phone.trim();
+    const trimmedAddress = address.trim();
+    const trimmedAbout = about.trim();
+
+    // ── 2. Name validation ──
+    if (!trimmedName) {
+      showAlert('Error', 'Clinic name is required');
+      return;
+    }
+    if (trimmedName.length < 2) {
+      showAlert('Error', 'Clinic name must be at least 2 characters');
       return;
     }
 
+    // ── 3. Phone validation (10 digits) ──
+    if (!trimmedPhone) {
+      showAlert('Error', 'Phone number is required');
+      return;
+    }
+    const phoneDigits = trimmedPhone.replace(/\D/g, '');
+    if (phoneDigits.length !== 10) {
+      showAlert('Error', 'Phone number must be exactly 10 digits');
+      return;
+    }
+
+    // ── 4. Address validation ──
+    if (!trimmedAddress) {
+      showAlert('Error', 'Address is required');
+      return;
+    }
+    if (trimmedAddress.length < 5) {
+      showAlert('Error', 'Address must be at least 5 characters');
+      return;
+    }
+
+    // ── 5. About validation (optional, but limit length) ──
+    if (trimmedAbout.length > 500) {
+      showAlert('Error', 'About section cannot exceed 500 characters');
+      return;
+    }
+
+    // ── 6. Proceed with API call ──
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem('token');
 
       const response = await API.put(
         '/clinic/profile',
-        { name, phone, address, about },
+        {
+          name: trimmedName,
+          phone: trimmedPhone,
+          address: trimmedAddress,
+          about: trimmedAbout,
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (response.data.success) {
-        Alert.alert('Success', 'Profile updated successfully', [
+        showAlert('Success', 'Profile updated successfully', [
           { text: 'OK', onPress: () => navigation.goBack() },
         ]);
       } else {
-        Alert.alert('Error', response.data.message || 'Update failed');
+        showAlert('Error', response.data.message || 'Update failed');
       }
     } catch (error: any) {
       console.log('❌ Update error:', error?.response?.data || error);
-      Alert.alert('Error', error?.response?.data?.message || 'Failed to update profile');
+      showAlert('Error', error?.response?.data?.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
@@ -88,18 +133,18 @@ const EditClinicProfileScreen = ({ route, navigation }: any) => {
 
   if (loading && !name) {
     return (
-<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
-  <ActivityIndicator size="large" color="#D62828" />
-  <Text style={{ color: '#8A8A8A', marginTop: 12 }}>Loading...</Text>
-</View>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+        <ActivityIndicator size="large" color="#D62828" />
+        <Text style={{ color: '#8A8A8A', marginTop: 12 }}>Loading...</Text>
+      </View>
     );
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-     <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* ── Header ── */}
+      {/* ── Fixed Header ── */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
@@ -108,52 +153,67 @@ const EditClinicProfileScreen = ({ route, navigation }: any) => {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <Text style={styles.label}>Clinic Name</Text>
-        <TextInput
-          style={styles.input}
-          value={name}
-          onChangeText={setName}
-          placeholder="Clinic Name"
-          placeholderTextColor="#666"
-        />
+      {/* ── KeyboardAvoidingView with ScrollView ── */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      >
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.label}>Clinic Name *</Text>
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Clinic Name"
+            placeholderTextColor="#666"
+          />
 
-        <Text style={styles.label}>Phone Number</Text>
-        <TextInput
-          style={styles.input}
-          value={phone}
-          onChangeText={setPhone}
-          placeholder="Phone Number"
-          placeholderTextColor="#666"
-          keyboardType="phone-pad"
-        />
+          <Text style={styles.label}>Phone Number *</Text>
+          <TextInput
+            style={styles.input}
+            value={phone}
+            onChangeText={(text) => setPhone(text.replace(/[^0-9]/g, ''))}
+            placeholder="Phone Number"
+            placeholderTextColor="#666"
+            keyboardType="phone-pad"
+            maxLength={10}
+          />
 
-        <Text style={styles.label}>Address</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={address}
-          onChangeText={setAddress}
-          placeholder="Address"
-          placeholderTextColor="#666"
-          multiline
-          numberOfLines={3}
-        />
+          <Text style={styles.label}>Address *</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={address}
+            onChangeText={setAddress}
+            placeholder="Address"
+            placeholderTextColor="#666"
+            multiline
+            numberOfLines={3}
+          />
 
-        <Text style={styles.label}>About</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={about}
-          onChangeText={setAbout}
-          placeholder="About the clinic"
-          placeholderTextColor="#666"
-          multiline
-          numberOfLines={4}
-        />
+          <Text style={styles.label}>About</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={about}
+            onChangeText={setAbout}
+            placeholder="About the clinic"
+            placeholderTextColor="#666"
+            multiline
+            numberOfLines={4}
+            maxLength={500}
+          />
+          <Text style={styles.charCount}>{about.length}/500</Text>
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Save Changes</Text>}
-        </TouchableOpacity>
-      </ScrollView>
+          <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={loading}>
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Save Changes</Text>}
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -164,7 +224,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingTop: Platform.OS === 'ios' ? 20 : (StatusBar.currentHeight || 0) + 16,
   },
   header: {
     flexDirection: 'row',
@@ -174,7 +233,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#EDEDED',
-    marginTop: 8,
   },
   backBtn: {
     padding: 4,
@@ -190,7 +248,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
+  },
+  scrollContent: {
     paddingTop: 16,
+    paddingBottom: 30,
   },
   label: {
     fontSize: 13,
@@ -212,6 +273,13 @@ const styles = StyleSheet.create({
   textArea: {
     height: 100,
     textAlignVertical: 'top',
+  },
+  charCount: {
+    alignSelf: 'flex-end',
+    fontSize: 12,
+    color: '#6B6B6B',
+    marginTop: -12,
+    marginBottom: 12,
   },
   saveButton: {
     backgroundColor: '#D62828',

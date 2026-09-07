@@ -21,7 +21,7 @@ const MAX_DAYS_AHEAD = 20;
 const BookAppointmentScreen = ({ route, navigation }: any) => {
   const preselectedDoctorId = route?.params?.doctorId;
   const preselectedSlot = route?.params?.slotTime;
-
+  const todayStr = new Date().toISOString().split('T')[0];
   const [patientName, setPatientName] = useState('');
   const [mobile, setMobile] = useState('');
   const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
@@ -31,16 +31,29 @@ const BookAppointmentScreen = ({ route, navigation }: any) => {
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // ── Date filter ──
-  const [filterDate, setFilterDate] = useState<string | null>(null); // "YYYY-MM-DD"
+  const [filterDate, setFilterDate] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // ── Fetch Doctors ──
+  const clearFields = () => {
+    setPatientName('');
+    setMobile('');
+    setSelectedDoctor(null);
+    setSelectedSlot(null);
+    setSlots([]);
+    setFilterDate(null);
+    setShowDatePicker(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      clearFields();
+    };
+  }, []);
+
   const getDoctors = async () => {
     try {
       const response = await API.get('/clinic/doctors');
       setDoctors(response.data.doctors || []);
-
       if (preselectedDoctorId && response.data.doctors) {
         const found = response.data.doctors.find(
           (d: any) => d._id === preselectedDoctorId
@@ -52,44 +65,17 @@ const BookAppointmentScreen = ({ route, navigation }: any) => {
     }
   };
 
-  // ── Fetch Slots for selected doctor ──
-  // const getSlots = async () => {
-  //   if (!selectedDoctor) return;
-  //   try {
-  //     const response = await API.get(`/slots/doctor/${selectedDoctor._id}`);
-  //     if (response.data.success) {
-  //       setSlots(response.data.slots || []);
-  //     }
-  //   } catch (error) {
-  //     console.log('Get Slots Error:', error);
-  //   }
-  // };
-
   const getSlots = async () => {
-  if (!selectedDoctor) return;
-
-  try {
-    const response = await API.get(`/slots/doctor/${selectedDoctor._id}`);
-
-    console.log("Selected Doctor ID:", selectedDoctor._id);
-console.log("Selected Doctor Name:", selectedDoctor.name);
-
-    console.log("========== API ==========");
-    console.log(response.data);
-    console.log("Total:", response.data.slots?.length);
-
-    console.log(
-      "Dates:",
-      [...new Set(response.data.slots.map((s: any) => s.slotDate))]
-    );
-
-    if (response.data.success) {
-      setSlots(response.data.slots || []);
+    if (!selectedDoctor) return;
+    try {
+      const response = await API.get(`/slots/doctor/${selectedDoctor._id}`);
+      if (response.data.success) {
+        setSlots(response.data.slots || []);
+      }
+    } catch (error) {
+      console.log(error);
     }
-  } catch (error) {
-    console.log(error);
-  }
-};
+  };
 
   useEffect(() => {
     getDoctors();
@@ -99,7 +85,7 @@ console.log("Selected Doctor Name:", selectedDoctor.name);
     if (selectedDoctor) {
       getSlots();
       setSelectedSlot(null);
-      setFilterDate(null);
+      setFilterDate(null); // reset to today on doctor change
     }
   }, [selectedDoctor]);
 
@@ -109,38 +95,34 @@ console.log("Selected Doctor Name:", selectedDoctor.name);
     }
   }, [preselectedSlot]);
 
-  // ── Filter: available, future (date+time), within next 15 days ──
-  const getFilteredSlots = () => {
-    if (!selectedDoctor) return [];
+ const getFilteredSlots = () => {
+  if (!selectedDoctor) return [];
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
 
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + MAX_DAYS_AHEAD);
+  const maxDateStr = maxDate.toISOString().split('T')[0];
 
-    const maxDate = new Date();
-    maxDate.setDate(maxDate.getDate() + MAX_DAYS_AHEAD);
-    const maxDateStr = maxDate.toISOString().split('T')[0];
+  // ✅ If filterDate is set, show only that date. Otherwise, show all dates.
+  return slots.filter((item) => {
+    const doctorId = item.doctor?._id || item.doctor;
+    if (item.status !== 'available') return false;
+    if (String(doctorId) !== String(selectedDoctor._id)) return false;
+    const slotDate = item.slotDate;
+    if (slotDate < todayStr) return false;
+    if (slotDate > maxDateStr) return false;
 
-    return slots.filter((item) => {
-      const doctorId = item.doctor?._id || item.doctor;
-      if (item.status !== 'available') return false;
-      if (String(doctorId) !== String(selectedDoctor._id)) return false;
+    // If a specific date is selected, filter to that date
+    if (filterDate && slotDate !== filterDate) return false;
 
-      const slotDate = item.slotDate; // "YYYY-MM-DD"
-      if (slotDate < todayStr) return false;
-      if (slotDate > maxDateStr) return false;
-
-      // Date filter (from picker)
-      if (filterDate && slotDate !== filterDate) return false;
-
-      if (slotDate > todayStr) return true;
-
-      // Today: check time
+    // Today: filter out past time slots
+    if (slotDate === todayStr) {
       const timeStr = item.slotTime;
       const timeParts = timeStr.match(/(\d+):(\d+)\s*([AP]M)/i);
       if (!timeParts) return true;
-
       let hour = parseInt(timeParts[1]);
       const minute = parseInt(timeParts[2]);
       const ampm = timeParts[3].toUpperCase();
@@ -148,12 +130,12 @@ console.log("Selected Doctor Name:", selectedDoctor.name);
       if (ampm === 'AM' && hour === 12) hour = 0;
       const slotMinutes = hour * 60 + minute;
       const currentMinutes = currentHour * 60 + currentMinute;
-
       return slotMinutes > currentMinutes;
-    });
-  };
+    }
+    return true;
+  });
+};
 
-  // ── Group filtered slots by date ──
   const getGroupedSlots = () => {
     const filtered = getFilteredSlots();
     const grouped: Record<string, any[]> = {};
@@ -161,8 +143,6 @@ console.log("Selected Doctor Name:", selectedDoctor.name);
       if (!grouped[item.slotDate]) grouped[item.slotDate] = [];
       grouped[item.slotDate].push(item);
     });
-    console.log("Filtered Slots:", filtered);
-
     return Object.keys(grouped)
       .sort()
       .map((date) => ({ date, items: grouped[date] }));
@@ -175,10 +155,8 @@ console.log("Selected Doctor Name:", selectedDoctor.name);
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
     const tomorrowStr = tomorrow.toISOString().split('T')[0];
-
     if (dateStr === todayStr) return 'Today';
     if (dateStr === tomorrowStr) return 'Tomorrow';
-
     return date.toLocaleDateString('en-IN', {
       weekday: 'short',
       day: '2-digit',
@@ -194,27 +172,23 @@ console.log("Selected Doctor Name:", selectedDoctor.name);
   };
 
   const onDatePicked = (event: any, date?: Date) => {
-    console.log("Picked Date =", date);
-    setShowDatePicker(Platform.OS === 'ios'); // iOS keeps picker open till manually dismissed if you want, else close
+    setShowDatePicker(Platform.OS === 'ios');
     if (Platform.OS === 'android') setShowDatePicker(false);
     if (event.type === 'dismissed' || !date) return;
-
     const yyyy = date.getFullYear();
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
     setFilterDate(`${yyyy}-${mm}-${dd}`);
   };
 
-  // ── Book Appointment ──
   const handleSave = async () => {
     if (!patientName.trim() || !mobile.trim() || !selectedDoctor || !selectedSlot) {
-      Alert.alert('Error', 'Please fill all fields and select a slot');
+      showAlert('Error', 'Please fill all fields and select a slot');
       return;
     }
 
     try {
       setLoading(true);
-
       const response = await API.post('/clinic/appointments', {
         patientName,
         mobile,
@@ -226,24 +200,20 @@ console.log("Selected Doctor Name:", selectedDoctor.name);
       });
 
       if (response.data.success) {
-        Alert.alert('Success', 'Appointment booked successfully', [
+        clearFields();
+        showAlert('Success', 'Appointment booked successfully', [
           { text: 'OK', onPress: () => navigation.goBack() },
         ]);
       }
     } catch (error: any) {
       console.log('Book Appointment Error:', error?.response?.data || error);
-      Alert.alert('Error', error?.response?.data?.message || 'Something went wrong');
+      showAlert('Error', error?.response?.data?.message || 'Something went wrong');
     } finally {
       setLoading(false);
     }
   };
 
   const groupedSlots = getGroupedSlots();
-  console.log("========== RENDER ==========");
-console.log("selectedDoctor =", selectedDoctor?._id);
-console.log("filterDate =", filterDate);
-console.log("slots state =", slots.length);
-console.log("groupedSlots =", groupedSlots.length);
   const { min: minDate, max: maxDate } = getMinMaxDate();
 
   return (
@@ -253,7 +223,6 @@ console.log("groupedSlots =", groupedSlots.length);
         <Text style={styles.subtitle}>Create and manage clinic appointments</Text>
       </View>
 
-      {/* Patient Name */}
       <Text style={styles.label}>Patient Name</Text>
       <TextInput
         placeholder="Enter patient name"
@@ -263,7 +232,6 @@ console.log("groupedSlots =", groupedSlots.length);
         onChangeText={setPatientName}
       />
 
-      {/* Mobile Number */}
       <Text style={styles.label}>Mobile Number</Text>
       <TextInput
         placeholder="Enter mobile number"
@@ -273,14 +241,11 @@ console.log("groupedSlots =", groupedSlots.length);
         value={mobile}
         onChangeText={(text) => {
           const numericText = text.replace(/[^0-9]/g, '');
-          if (numericText.length <= 10) {
-            setMobile(numericText);
-          }
+          if (numericText.length <= 10) setMobile(numericText);
         }}
         maxLength={10}
       />
 
-      {/* Select Doctor (Dropdown) */}
       <Text style={styles.label}>Select Doctor</Text>
       <TouchableOpacity
         style={styles.dropdownButton}
@@ -292,7 +257,6 @@ console.log("groupedSlots =", groupedSlots.length);
         <Text style={styles.dropdownArrow}>▼</Text>
       </TouchableOpacity>
 
-      {/* Doctor Modal */}
       <Modal
         visible={modalVisible}
         transparent={true}
@@ -335,30 +299,27 @@ console.log("groupedSlots =", groupedSlots.length);
         </View>
       </Modal>
 
-      {/* Select Slot — grouped by date */}
       <View style={styles.slotHeaderRow}>
         <Text style={styles.label}>Select Date & Slot</Text>
         <Text style={styles.slotWindowNote}>Next {MAX_DAYS_AHEAD} days</Text>
       </View>
 
-      {/* Date Picker row */}
-      <View style={styles.dateFilterRow}>
-        <TouchableOpacity
-          style={styles.datePickerBtn}
-          onPress={() => setShowDatePicker(true)}
-          disabled={!selectedDoctor}
-        >
-          <Text style={styles.datePickerBtnText}>
-            {filterDate ? formatDateLabel(filterDate) : 'Jump to date'}
-          </Text>
-        </TouchableOpacity>
-
-        {filterDate ? (
-          <TouchableOpacity style={styles.clearDateBtn} onPress={() => setFilterDate(null)}>
-            <Text style={styles.clearDateBtnText}>Show All</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
+     <View style={styles.dateFilterRow}>
+  <TouchableOpacity
+    style={styles.datePickerBtn}
+    onPress={() => setShowDatePicker(true)}
+    disabled={!selectedDoctor}
+  >
+    <Text style={styles.datePickerBtnText}>
+      {filterDate ? formatDateLabel(filterDate) : '📅 Select Date'}
+    </Text>
+  </TouchableOpacity>
+  {filterDate && (
+    <TouchableOpacity style={styles.clearDateBtn} onPress={() => setFilterDate(null)}>
+      <Text style={styles.clearDateBtnText}>Show All</Text>
+    </TouchableOpacity>
+  )}
+</View>
 
       {showDatePicker && (
         <DateTimePicker
@@ -370,10 +331,6 @@ console.log("groupedSlots =", groupedSlots.length);
           onChange={onDatePicked}
         />
       )}
-
-      {/* <Text style={{ color: 'red', fontSize: 18 }}>
-  Group Count: {groupedSlots.length}
-</Text> */}
 
       {selectedDoctor ? (
         groupedSlots.length > 0 ? (
@@ -407,7 +364,7 @@ console.log("groupedSlots =", groupedSlots.length);
             <Text style={styles.noSlotsText}>
               {filterDate
                 ? `No available slots for ${formatDateLabel(filterDate)}`
-                : `No available slots for this doctor in the next ${MAX_DAYS_AHEAD} days`}
+                : `No available slots for today`}
             </Text>
           </View>
         )
@@ -417,8 +374,7 @@ console.log("groupedSlots =", groupedSlots.length);
         </View>
       )}
 
-      {/* Selected slot confirmation */}
-      {selectedSlot ? (
+      {selectedSlot && (
         <View style={styles.confirmCard}>
           <Text style={styles.confirmText}>
             Booking for{' '}
@@ -427,19 +383,10 @@ console.log("groupedSlots =", groupedSlots.length);
             </Text>
           </Text>
         </View>
-      ) : null}
+      )}
 
-      {/* Book Button */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={handleSave}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={styles.buttonText}>Book Appointment</Text>
-        )}
+      <TouchableOpacity style={styles.button} onPress={handleSave} disabled={loading}>
+        {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>Book Appointment</Text>}
       </TouchableOpacity>
     </ScrollView>
   );
@@ -447,7 +394,9 @@ console.log("groupedSlots =", groupedSlots.length);
 
 export default BookAppointmentScreen;
 
+// ── Styles remain unchanged ──
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -462,7 +411,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   title: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '800',
     color: '#1A1A1A',
     marginBottom: 8,

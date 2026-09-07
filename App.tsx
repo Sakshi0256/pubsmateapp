@@ -3,7 +3,7 @@ import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import { LoaderProvider } from './src/context/LoaderContext';
-
+import { AlertProvider } from './src/context/AlertContext';
 
 const App = () => {
   return (
@@ -14,7 +14,9 @@ const App = () => {
         translucent={false}
       />
         <LoaderProvider>
+           <AlertProvider>
       <AppNavigator />
+      </AlertProvider>
       </LoaderProvider>
     </SafeAreaProvider>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,10 @@ import {
   Image,
   Dimensions,
   Alert,
+  ActivityIndicator,
+  TouchableWithoutFeedback,
 } from 'react-native';
-
+import { CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../../services/api';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -25,14 +27,21 @@ const LoginScreen = ({ navigation, route }: any) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Refs to focus inputs
+  const emailInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInput>(null);
 
   const handleLogin = async () => {
-    try {
-      if (!email || !password) {
-        Alert.alert('Error', 'Please enter email and password');
-        return;
-      }
+    if (!email || !password) {
+      showAlert('Error', 'Please enter email and password');
+      return;
+    }
 
+    setIsLoading(true);
+
+    try {
       const response = await API.post('/auth/login', {
         email,
         password,
@@ -48,24 +57,34 @@ const LoginScreen = ({ navigation, route }: any) => {
       const savedToken = await AsyncStorage.getItem('token');
       console.log('💾 Token saved in AsyncStorage:', savedToken);
 
-      if (data.user.role === 'patient') {
-        navigation.replace('PatientTabs');
-      } else if (data.user.role === 'doctor') {
-        navigation.replace('DoctorTabs');
+      // Determine target screen
+      let targetScreen = 'PatientTabs';
+      if (data.user.role === 'doctor') {
+        targetScreen = 'DoctorTabs';
       } else if (data.user.role === 'clinic') {
-        navigation.replace('ClinicTabs');
+        targetScreen = 'ClinicTabs';
       }
+
+      // Reset navigation stack – clears history and prevents back to login
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: targetScreen }],
+        })
+      );
     } catch (error: any) {
       console.log('FULL ERROR =>', error);
       console.log('RESPONSE =>', error?.response?.data);
       console.log('MESSAGE =>', error?.message);
 
-      Alert.alert(
+      showAlert(
         'Login Failed',
         error?.response?.data?.message ||
           error?.message ||
-          'Something went wrong',
+          'Something went wrong'
       );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -85,12 +104,13 @@ const LoginScreen = ({ navigation, route }: any) => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
 
-      <KeyboardAvoidingWrapper contentContainerStyle={styles.scrollContainer}>
+      <KeyboardAvoidingWrapper
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.content}>
-
           <Image source={logo} style={styles.logo} resizeMode="contain" />
 
-          {/* HEADER */}
           <Text style={styles.heading}>Welcome Back</Text>
           <Text style={styles.subHeading}>
             Sign in to your healthcare workspace
@@ -113,61 +133,70 @@ const LoginScreen = ({ navigation, route }: any) => {
             </View>
             <TouchableOpacity
               onPress={() => navigation.navigate('RoleSelection')}
-              style={styles.changeRoleBtn}>
+              style={styles.changeRoleBtn}
+            >
               <Text style={styles.changeRoleText}>Change</Text>
             </TouchableOpacity>
           </View>
 
-          {/* EMAIL FIELD */}
-          <View style={styles.fieldCard}>
-            <Text style={styles.fieldLabel}>Email Address</Text>
-            <TextInput
-              placeholder="Enter your email"
-              placeholderTextColor="#3D5249"
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          {/* PASSWORD FIELD */}
-          <View style={styles.fieldCard}>
-            <Text style={styles.fieldLabel}>Password</Text>
-            <View style={styles.passwordRow}>
+          {/* ── EMAIL FIELD ── */}
+          <Text style={styles.fieldLabel}>Email Address</Text>
+          <TouchableWithoutFeedback onPress={() => emailInputRef.current?.focus()}>
+            <View style={styles.fieldCard}>
               <TextInput
-                placeholder="Enter your password"
+                ref={emailInputRef}
+                placeholder="Enter your email"
                 placeholderTextColor="#3D5249"
-                secureTextEntry={!showPassword}
-                style={[styles.input, styles.passwordInput]}
-                value={password}
-                onChangeText={setPassword}
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
               />
-              <TouchableOpacity
-                onPress={() => setShowPassword(prev => !prev)}
-                style={styles.eyeButton}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color="#9B7474"
-                />
-              </TouchableOpacity>
             </View>
-          </View>
+          </TouchableWithoutFeedback>
 
-          {/* FORGOT PASSWORD */}
-          {/* <TouchableOpacity style={styles.forgotContainer}>
-            <Text style={styles.forgotText}>Forgot Password?</Text>
-          </TouchableOpacity> */}
+          {/* ── PASSWORD FIELD ── */}
+          <Text style={styles.fieldLabel}>Password</Text>
+          <TouchableWithoutFeedback onPress={() => passwordInputRef.current?.focus()}>
+            <View style={styles.fieldCard}>
+              <View style={styles.passwordRow}>
+                <TextInput
+                  ref={passwordInputRef}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#3D5249"
+                  secureTextEntry={!showPassword}
+                  style={[styles.input, styles.passwordInput]}
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(prev => !prev)}
+                  style={styles.eyeButton}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color="#9B7474"
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
 
           {/* LOGIN BUTTON */}
           <TouchableOpacity
-            style={styles.loginButton}
+            style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
             activeOpacity={0.85}
-            onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Login</Text>
+            onPress={handleLogin}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={styles.loginButtonText}>Login</Text>
+            )}
           </TouchableOpacity>
 
           {/* SIGN UP LINK - hidden for Doctor role */}
@@ -175,14 +204,14 @@ const LoginScreen = ({ navigation, route }: any) => {
             <TouchableOpacity
               onPress={() =>
                 navigation.navigate('Signup', { role: selectedRole })
-              }>
+              }
+            >
               <Text style={styles.signupText}>
                 Don't have an account?{' '}
                 <Text style={styles.signupHighlight}>Sign Up</Text>
               </Text>
             </TouchableOpacity>
           )}
-
         </View>
       </KeyboardAvoidingWrapper>
     </SafeAreaView>
@@ -196,29 +225,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-
   scrollContainer: {
     flexGrow: 1,
   },
-
   content: {
     paddingHorizontal: 24,
     paddingVertical: 48,
   },
-
   heading: {
     color: '#1A1A1A',
     fontSize: 34,
     fontWeight: '800',
     marginBottom: 8,
   },
-
   subHeading: {
     color: '#6B6B6B',
     fontSize: 15,
     marginBottom: 32,
   },
-
   roleBadgeCard: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
@@ -229,12 +253,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
   },
-
   iconCircle: {
     width: 52,
     height: 52,
@@ -243,31 +266,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   roleTextContainer: {
     flex: 1,
     marginLeft: 14,
   },
-
   roleLabel: {
     color: '#6B6B6B',
     fontSize: 12,
     marginBottom: 2,
   },
-
   roleValue: {
     color: '#1A1A1A',
     fontSize: 18,
     fontWeight: '700',
   },
-
   logo: {
     width: SCREEN_WIDTH * 0.6,
     height: (SCREEN_WIDTH * 0.5) / 1.62,
     alignSelf: 'center',
     marginBottom: 20,
   },
-
   changeRoleBtn: {
     paddingHorizontal: 14,
     paddingVertical: 7,
@@ -275,13 +293,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E63946',
   },
-
   changeRoleText: {
     color: '#E63946',
     fontSize: 13,
     fontWeight: '600',
   },
-
   fieldCard: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
@@ -291,12 +307,11 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     marginBottom: 14,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
   },
-
   fieldLabel: {
     color: '#6B6B6B',
     fontSize: 12,
@@ -305,61 +320,45 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
-
   input: {
     color: '#1A1A1A',
     fontSize: 16,
     fontWeight: '500',
     padding: 0,
   },
-
   passwordRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-
   passwordInput: {
     flex: 1,
   },
-
   eyeButton: {
     paddingLeft: 10,
   },
-
-  forgotContainer: {
-    alignSelf: 'flex-end',
-    marginBottom: 28,
-    marginTop: 4,
-  },
-
-  forgotText: {
-    color: '#E63946',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-
   loginButton: {
     backgroundColor: '#E63946',
     paddingVertical: 18,
     borderRadius: 28,
     alignItems: 'center',
     marginBottom: 20,
+    minHeight: 56,
   },
-
+  loginButtonDisabled: {
+    opacity: 0.7,
+  },
   loginButtonText: {
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '800',
     letterSpacing: 0.3,
   },
-
   signupText: {
     textAlign: 'center',
     color: '#6B6B6B',
     fontSize: 14,
     fontWeight: '500',
   },
-
   signupHighlight: {
     color: '#E63946',
     fontWeight: '700',

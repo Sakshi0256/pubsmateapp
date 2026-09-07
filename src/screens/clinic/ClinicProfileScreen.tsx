@@ -9,58 +9,65 @@ import {
   ActivityIndicator,
   RefreshControl,
   Animated,
-  Image, 
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../../services/api';
 import { launchImageLibrary } from 'react-native-image-picker';
-
 
 const ClinicProfileScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [clinic, setClinic] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null); // 👈 new
 
   const headerAnim = useRef(new Animated.Value(0)).current;
   const cardAnim = useRef(new Animated.Value(0)).current;
   const infoAnim = useRef(new Animated.Value(0)).current;
 
+  const pickAndUploadPhoto = async () => {
+    setUploadError(null); // 👈 clear previous error
 
-const pickAndUploadPhoto = async () => {
-  const result = await launchImageLibrary({
-    mediaType: 'photo',
-    includeBase64: true,
-    quality: 0.6,
-    maxWidth: 600,
-    maxHeight: 600,
-  });
+    const result = await launchImageLibrary({
+      mediaType: 'photo',
+      includeBase64: true,
+      quality: 0.6,
+      maxWidth: 600,
+      maxHeight: 600,
+    });
 
-  if (result.didCancel || !result.assets?.[0]) return;
+    if (result.didCancel || !result.assets?.[0]) return;
 
-  const asset = result.assets[0];
-  const base64Image = `data:${asset.type};base64,${asset.base64}`;
+    const asset = result.assets[0];
+    const base64Image = `data:${asset.type};base64,${asset.base64}`;
 
-  try {
-    setUploading(true);
-    const token = await AsyncStorage.getItem('token');
-    const response = await API.put(
-      '/clinic/profile/photo',
-      { image: base64Image },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    try {
+      setUploading(true);
+      const token = await AsyncStorage.getItem('token');
+      const response = await API.put(
+        '/clinic/profile/photo',
+        { image: base64Image },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-    if (response.data.success) {
-      setClinic((prev: any) => ({ ...prev, photo: response.data.photo }));
+      if (response.data.success) {
+        setClinic((prev: any) => ({ ...prev, photo: response.data.photo }));
+        setUploadError(null); // clear error on success
+      } else {
+        // if success false but no error thrown
+        setUploadError(response.data.message || 'Upload failed');
+      }
+    } catch (error: any) {
+      console.log('Photo upload error:', error?.response?.data || error);
+      // Extract server message or fallback
+      const msg = error?.response?.data?.message || error?.message || 'Upload failed. Please try again.';
+      setUploadError(msg);
+    } finally {
+      setUploading(false);
     }
-  } catch (error: any) {
-    console.log('Photo upload error:', error?.response?.data || error);
-    Alert.alert('Error', error?.response?.data?.message || 'Upload failed');
-  } finally {
-    setUploading(false);
-  }
-};
-  // ── Fetch Clinic Profile ──
+  };
+
   const fetchClinicProfile = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -73,7 +80,7 @@ const pickAndUploadPhoto = async () => {
       }
     } catch (error: any) {
       console.log('Fetch profile error:', error);
-      Alert.alert('Error', error?.response?.data?.message || 'Failed to fetch profile');
+      showAlert('Error', error?.response?.data?.message || 'Failed to fetch profile');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -83,7 +90,6 @@ const pickAndUploadPhoto = async () => {
   useEffect(() => {
     fetchClinicProfile();
 
-    // Animate
     Animated.stagger(150, [
       Animated.timing(headerAnim, {
         toValue: 1,
@@ -103,30 +109,26 @@ const pickAndUploadPhoto = async () => {
     ]).start();
   }, []);
 
-  // ── Pull to Refresh ──
   const onRefresh = () => {
     setRefreshing(true);
     fetchClinicProfile();
   };
 
-  // ── Logout ──
   const performLogout = async () => {
-    await AsyncStorage.removeItem('token');
-    await AsyncStorage.removeItem('user');
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'RoleSelection' }],
-    });
+    try {
+      await AsyncStorage.removeItem('token');
+      await AsyncStorage.removeItem('user');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'RoleSelection' }],
+      });
+    } catch (error) {
+      console.log('Logout Error:', error);
+    }
   };
 
-  const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', onPress: performLogout },
-    ]);
-  };
 
-  // ── Get Initials ──
+
   const getInitials = (name: string) => {
     if (!name) return 'C';
     const words = name.split(' ');
@@ -157,10 +159,8 @@ const pickAndUploadPhoto = async () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#D62828" />
         }>
 
-        {/* TOP HEADER */}
         <View style={styles.topHeader} />
 
-        {/* PROFILE CARD */}
         <Animated.View
           style={[
             styles.profileCard,
@@ -177,29 +177,32 @@ const pickAndUploadPhoto = async () => {
             },
           ]}>
 
-      <TouchableOpacity onPress={pickAndUploadPhoto} disabled={uploading}>
-  <View style={styles.avatar}>
-    {clinic?.photo ? (
-      <Image source={{ uri: clinic.photo }} style={styles.avatarImage} />
-    ) : (
-      <Text style={styles.avatarText}>{getInitials(clinic?.name || 'Clinic')}</Text>
-    )}
-    {uploading && (
-      <View style={styles.avatarOverlay}>
-        <ActivityIndicator color="#FFFFFF" size="small" />
-      </View>
-    )}
-  </View>
-  <View style={styles.cameraBadge}>
-    <Text style={{ color: '#FFF', fontSize: 12 }}>✎</Text>
-  </View>
-</TouchableOpacity>
+          <TouchableOpacity onPress={pickAndUploadPhoto} disabled={uploading}>
+            <View style={styles.avatar}>
+              {clinic?.photo ? (
+                <Image source={{ uri: clinic.photo }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarText}>{getInitials(clinic?.name || 'Clinic')}</Text>
+              )}
+              {uploading && (
+                <View style={styles.avatarOverlay}>
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                </View>
+              )}
+            </View>
+            <View style={styles.cameraBadge}>
+              <Text style={{ color: '#FFF', fontSize: 12 }}>✎</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* 👇 Error message */}
+          {uploadError && (
+            <Text style={styles.errorText}>{uploadError}</Text>
+          )}
 
           <Text style={styles.clinicName} numberOfLines={2} adjustsFontSizeToFit>
-  {clinic?.name || 'Clinic'}
-</Text>
-
-         
+            {clinic?.name || 'Clinic'}
+          </Text>
         </Animated.View>
 
         {/* INFO SECTION */}
@@ -257,7 +260,6 @@ const pickAndUploadPhoto = async () => {
 
         </Animated.View>
 
-        {/* ACTIONS */}
         <TouchableOpacity
           style={styles.editButton}
           onPress={() => navigation.navigate('EditClinicProfile', { clinic })}>
@@ -265,10 +267,11 @@ const pickAndUploadPhoto = async () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Logout</Text>
-        </TouchableOpacity>
+      style={styles.logoutButton}
+      onPress={performLogout} // ✅ no alert, logs out instantly
+    >
+      <Text style={styles.logoutButtonText}>Logout</Text>
+    </TouchableOpacity>
 
         <View style={{ height: 30 }} />
       </ScrollView>
@@ -304,32 +307,6 @@ const styles = StyleSheet.create({
     top: -80,
     right: -80,
   },
-
-  avatarImage: {
-  width: 82,
-  height: 82,
-  borderRadius: 41,
-},
-avatarOverlay: {
-  ...StyleSheet.absoluteFillObject,
-  borderRadius: 41,
-  backgroundColor: 'rgba(0,0,0,0.4)',
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-cameraBadge: {
-  position: 'absolute',
-  bottom: 12,
-  right: -4,
-  backgroundColor: '#D62828',
-  width: 24,
-  height: 24,
-  borderRadius: 12,
-  justifyContent: 'center',
-  alignItems: 'center',
-  borderWidth: 2,
-  borderColor: '#FFFFFF',
-},
   bgBlob2: {
     position: 'absolute',
     width: 220,
@@ -340,7 +317,7 @@ cameraBadge: {
     left: -60,
   },
   topHeader: {
-    height: 160,
+    height: 80,
     backgroundColor: '#F0EDE9',
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
@@ -351,7 +328,7 @@ cameraBadge: {
     marginTop: -55,
     borderRadius: 24,
     alignItems: 'center',
-     paddingHorizontal: 16, 
+    paddingHorizontal: 16,
     paddingVertical: 24,
     borderWidth: 1,
     borderColor: '#EDEDED',
@@ -368,15 +345,50 @@ cameraBadge: {
     backgroundColor: '#D62828',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 8, // reduced to accommodate error text
+  },
+  avatarImage: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+  },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 41,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatarText: {
     fontSize: 28,
     fontWeight: '800',
     color: '#FFFFFF',
   },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: -4,
+    backgroundColor: '#D62828',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  // 👇 Error text style
+  errorText: {
+    color: '#EF4444',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 4,
+    paddingHorizontal: 10,
+  },
   clinicName: {
-    fontSize: 22, 
+    fontSize: 22,
     fontWeight: '800',
     color: '#1A1A1A',
     marginBottom: 4,

@@ -21,6 +21,10 @@ const DoctorSlotsScreen = ({ route }: any) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+  console.log('📦 route.params:', route.params);
+}, []);
+
+  useEffect(() => {
     getSlots();
   }, []);
 

@@ -5,7 +5,8 @@ import ClinicDashboardScreen from '../screens/clinic/ClinicDashboardScreen';
 import BookAppointmentScreen from '../screens/clinic/BookAppointmentScreen';
 import AddDoctorScreen from '../screens/clinic/AddDoctorScreen';
 import DoctorSlotsScreen from '../screens/clinic/DoctorSlotsScreen';
-
+import InviteDoctorScreen from '../screens/clinic/InviteDoctorScreen';
+import SetDoctorTimingScreen from '../screens/clinic/SetDoctorTimingScreen';
 const Stack = createNativeStackNavigator();
 
 const ClinicStackNavigator = () => {
@@ -45,6 +46,8 @@ const ClinicStackNavigator = () => {
                     headerShown: false,
                 }}
             />
+<Stack.Screen name="InviteDoctor" component={InviteDoctorScreen}   options={{ headerShown: false }}/>
+<Stack.Screen name="SetDoctorTiming" component={SetDoctorTimingScreen} options={{ headerShown: false }} />
 
         </Stack.Navigator>
     );

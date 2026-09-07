@@ -32,7 +32,7 @@ const SlotBookingScreen = ({
 
     if (!selectedSlot) {
 
-      Alert.alert(
+      showAlert(
         'Select Slot',
         'Please select appointment slot',
       );
@@ -40,7 +40,7 @@ const SlotBookingScreen = ({
       return;
     }
 
-    Alert.alert(
+    showAlert(
       'Appointment Booked',
       `Your appointment with ${doctor?.name} is confirmed for ${selectedSlot}`,
     );

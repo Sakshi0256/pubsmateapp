@@ -13,6 +13,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../../services/api';
 import { useFocusEffect } from '@react-navigation/native';
+import { useClinicProfile } from '../../context/ClinicProfileContext';
 
 
 // ── Theme ──────────────────────────────────────────────────────────────────────
@@ -33,8 +34,18 @@ const C = {
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 const TODAY = new Date();
-const fmt = (d: Date) => d.toISOString().split('T')[0];
-const todayStr = fmt(TODAY);
+const fmtISO = (d: Date) => d.toISOString().split('T')[0];
+const todayISO = fmtISO(TODAY);
+
+// For display (e.g., "12 Aug 2026")
+const formatDisplayDate = (date: Date) =>
+  date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+const todayDisplay = formatDisplayDate(TODAY);
+
 
 const ClinicDashboardScreen = ({ navigation }: any) => {
   const [stats, setStats] = useState({
@@ -44,9 +55,11 @@ const ClinicDashboardScreen = ({ navigation }: any) => {
     rejectedAppointments: 0,
   });
   const [appointments, setAppointments] = useState<any[]>([]);
-   const [clinicName, setClinicName] = useState('Clinic');
-const [clinicPhoto, setClinicPhoto] = useState<string | null>(null);   // add
+  const [clinicName, setClinicName] = useState('Clinic');
+  const [clinicPhoto, setClinicPhoto] = useState<string | null>(null);   // add
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const { updateClinic } = useClinicProfile();
+
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 420, useNativeDriver: true }).start();
@@ -64,7 +77,7 @@ const [clinicPhoto, setClinicPhoto] = useState<string | null>(null);   // add
     }
   };
 
-   // ── Fetch Clinic Profile ──
+  // ── Fetch Clinic Profile ──
   const fetchClinicProfile = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -72,8 +85,12 @@ const [clinicPhoto, setClinicPhoto] = useState<string | null>(null);   // add
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.data.success) {
-        setClinicName(response.data.clinic?.name || 'Clinic');
-         setClinicPhoto(response.data.clinic?.photo || null);
+        const clinicData = response.data.clinic;
+        // Update context so the header updates
+        updateClinic({
+          name: clinicData?.name || 'Clinic',
+          photo: clinicData?.photo || null,
+        });
       }
     } catch (error) {
       console.log('Clinic Profile Error:', error);
@@ -87,8 +104,8 @@ const [clinicPhoto, setClinicPhoto] = useState<string | null>(null);   // add
       const response = await API.get('/clinic/appointments', {
         headers: { Authorization: `Bearer ${token}` },
         params: {
-          dateFrom: todayStr,
-          dateTo: todayStr,
+          dateFrom: todayISO,   // <-- changed from todayStr
+          dateTo: todayISO,     // <-- changed from todayStr
           limit: 100,
         },
       });
@@ -120,7 +137,7 @@ const [clinicPhoto, setClinicPhoto] = useState<string | null>(null);   // add
     const isPending = item.status === 'pending';
     const isCompleted = item.status === 'completed';
     const isRejected = item.status === 'rejected';
-    
+
     const dotColor = isPending ? '#F59E0B' : isCompleted ? '#22C55E' : isRejected ? '#EF4444' : '#777777';
     const badgeBg = isPending ? 'rgba(245,158,11,0.12)' : isCompleted ? 'rgba(34,197,94,0.12)' : isRejected ? 'rgba(239,68,68,0.12)' : 'rgba(119,119,119,0.12)';
     const badgeBrd = isPending ? 'rgba(245,158,11,0.3)' : isCompleted ? 'rgba(34,197,94,0.3)' : isRejected ? 'rgba(239,68,68,0.3)' : 'rgba(119,119,119,0.3)';
@@ -153,7 +170,7 @@ const [clinicPhoto, setClinicPhoto] = useState<string | null>(null);   // add
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <View style={styles.root}>
-    <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
       <Animated.ScrollView
         style={{ flex: 1, opacity: fadeAnim }}
@@ -161,31 +178,13 @@ const [clinicPhoto, setClinicPhoto] = useState<string | null>(null);   // add
         showsVerticalScrollIndicator={false}>
 
         {/* ── HEADER ── */}
-        <View style={styles.header}>
-          <View style={styles.logoRow}>
-           <View style={styles.logoBox}>
-  {clinicPhoto ? (
-    <Image source={{ uri: clinicPhoto }} style={styles.logoImage} />
-  ) : (
-    <>
-      <Text style={styles.logoP}>P</Text>
-      <Text style={styles.logoPlus}>+</Text>
-    </>
-  )}
-</View>
-            <View>
-              <Text style={styles.brandName}>{clinicName}</Text>
-              {/* <Text style={styles.brandSub}>Clinic Dashboard</Text> */}
-            </View>
-          </View>
-         
-        </View>
+     
 
         {/* ── STATS ── */}
         <View style={styles.statsRow}>
           <StatCard value={stats.totalAppointments} label="Total" accent />
           <StatCard value={stats.pendingAppointments} label="Pending" />
-          <StatCard value={stats.completedAppointments} label="Done" />
+          <StatCard value={stats.completedAppointments} label="Complet" />
           <StatCard value={stats.rejectedAppointments} label="Rejected" />
         </View>
 
@@ -193,7 +192,7 @@ const [clinicPhoto, setClinicPhoto] = useState<string | null>(null);   // add
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Today's Appointments</Text>
-            <Text style={styles.sectionDate}>{todayStr}</Text>
+            <Text style={styles.sectionDate}>{todayDisplay}</Text>
           </View>
 
           {appointments.length === 0 ? (
@@ -234,7 +233,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   content: {
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 54 : 40,
+    // paddingTop: Platform.OS === 'ios' ? 54 : 40,
     paddingBottom: 12,
   },
 
@@ -261,10 +260,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',   // add
   },
   logoImage: {
-  width: 38,
-  height: 38,
-  borderRadius: 10,
-},
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+  },
   logoP: {
     color: '#fff',
     fontWeight: '900',

@@ -9,7 +9,7 @@ import ClinicNavigator from './ClinicNavigator';
 import SplashScreen from '../screens/auth/splashscree';
 import RoleSelectionScreen from '../screens/auth/RoleSelectionScreen';
 import SignupScreen from '../screens/auth/SignupScreen';
-
+import DoctorEditProfileScreen from '../screens/doctor/DoctorEditProfileScreen';
 const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
@@ -55,6 +55,7 @@ const AppNavigator = () => {
                     name="ClinicTabs"
                     component={ClinicNavigator}
                 />
+  <Stack.Screen name="DoctorEditProfile" component={DoctorEditProfileScreen} options={{ headerShown: false }} />
             </Stack.Navigator>
         </NavigationContainer>
     );

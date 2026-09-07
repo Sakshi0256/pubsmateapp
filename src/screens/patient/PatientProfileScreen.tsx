@@ -15,7 +15,7 @@ const PatientProfileScreen = ({
 
   const handleLogout = () => {
 
-    Alert.alert(
+    showAlert(
       'Logout',
       'Are you sure you want to logout?',
       [

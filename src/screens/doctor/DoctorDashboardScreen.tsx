@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,16 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  TouchableOpacity,
+  Modal,
+  FlatList,
+  Image,
+  RefreshControl,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import API from '../../services/api'; // ✅ API import
+import API from '../../services/api';
+import { useFocusEffect } from '@react-navigation/native';
 
 const DoctorDashboardScreen = ({ navigation }: any) => {
   const [stats, setStats] = useState({
@@ -23,73 +29,123 @@ const DoctorDashboardScreen = ({ navigation }: any) => {
   const [doctorName, setDoctorName] = useState('');
   const [clinicName, setClinicName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // ── Helper: proper "First Last" initials (no random substring) ──
-  const getInitials = (fullName: string) => {
-    if (!fullName) return '';
-    const parts = fullName.trim().split(/\s+/);
-    const first = parts[0]?.[0] || '';
-    const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
-    return (first + last).toUpperCase();
+  // ── Clinic Filter ──
+  const [clinics, setClinics] = useState<any[]>([]);
+  const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const getTimeOfDay = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
   };
 
-  // ── Dashboard Stats ──
-  const getDashboardData = async () => {
+  // ── Data fetching functions ──
+  const getDoctorClinics = async () => {
     try {
-      const userData = await AsyncStorage.getItem('user');
-      if (userData) {
-        const user = JSON.parse(userData);
-        setDoctorName(user.name);
-        // ✅ matches DoctorProfileScreen field: doctor?.hospitalName
-        if (user.hospitalName) {
-          setClinicName(user.hospitalName);
-        } else {
-          // fallback: not cached in AsyncStorage, fetch from profile API
-          try {
-            const profileRes = await API.get('/auth/doctor-profile');
-            if (profileRes.data.success) {
-              setClinicName(profileRes.data.data?.hospitalName || '');
-            }
-          } catch (e) {
-            console.log('CLINIC NAME FETCH ERROR', e);
+      const response = await API.get('/auth/doctor-profile');
+      if (response.data.success) {
+        const doctorData = response.data.data;
+        setDoctorName(doctorData.name);
+        setClinicName(doctorData.hospitalName || '');
+        if (doctorData.clinics && doctorData.clinics.length > 0) {
+          setClinics(doctorData.clinics);
+          // Set default selection if not already set
+          if (!selectedClinicId) {
+            setSelectedClinicId(doctorData.clinics[0]._id);
           }
         }
       }
+    } catch (error) {
+      console.log('CLINIC FETCH ERROR', error);
+    }
+  };
+
+  const getDashboardData = async () => {
+    try {
       const response = await API.get('/doctors/dashboard/stats');
       setStats(response.data.stats);
     } catch (error: any) {
       console.log('DOCTOR DASHBOARD ERROR', error?.response?.data || error);
-    } finally {
-      setLoading(false);
     }
   };
 
-  // ── Appointments ──
   const getAppointments = async () => {
     try {
-      const response = await API.get('/doctors/appointments/my');
+      const params: any = {};
+      if (selectedClinicId) params.clinicId = selectedClinicId;
+      const response = await API.get('/doctors/appointments/my', { params });
       setAppointments(response.data.appointments);
     } catch (error: any) {
       console.log('DOCTOR APPOINTMENTS ERROR', error?.response?.data || error);
     }
   };
 
+  // ── Combined refresh ──
+  const refreshAll = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      getDoctorClinics(),
+      getDashboardData(),
+      getAppointments(),
+    ]);
+    setRefreshing(false);
+  };
+
+  // ── Initial load ──
   useEffect(() => {
-    getDashboardData();
-    getAppointments();
+    const init = async () => {
+      setLoading(true);
+      await refreshAll();
+      setLoading(false);
+    };
+    init();
   }, []);
 
+  // ── Refetch when clinic filter changes ──
+  useEffect(() => {
+    if (!loading) {
+      getAppointments();
+    }
+  }, [selectedClinicId]);
+
+  // ── Auto-refresh on focus ──
+  useFocusEffect(
+    useCallback(() => {
+      if (!loading) {
+        refreshAll();
+      }
+    }, [loading])
+  );
+
+  // ── Optional: periodic refresh every 30 seconds (comment out if not needed)
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     if (!loading) {
+  //       refreshAll();
+  //     }
+  //   }, 30000);
+  //   return () => clearInterval(interval);
+  // }, [loading]);
+
   // ── Filter Today's Appointments ──
+  const todayStr = new Date().toISOString().split('T')[0];
   const todayAppointments = appointments.filter(item => {
-    const dateToCheck = item.appointmentDate || item.createdAt || item.slotDate;
-    if (!dateToCheck) return false;
-    const today = new Date();
-    const itemDate = new Date(dateToCheck);
-    return (
-      itemDate.getDate() === today.getDate() &&
-      itemDate.getMonth() === today.getMonth() &&
-      itemDate.getFullYear() === today.getFullYear()
-    );
+    const dateStr = item.slotDate || item.appointmentDate || item.createdAt;
+    if (!dateStr) return false;
+    if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return dateStr === todayStr;
+    }
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return false;
+      return d.toISOString().split('T')[0] === todayStr;
+    } catch {
+      return false;
+    }
   });
 
   const statusColors: Record<string, { bg: string; text: string }> = {
@@ -108,30 +164,56 @@ const DoctorDashboardScreen = ({ navigation }: any) => {
     );
   }
 
+  const getSelectedClinicName = () => {
+    if (!selectedClinicId) return 'All Clinics';
+    const found = clinics.find(c => c._id === selectedClinicId);
+    return found ? found.name : 'All Clinics';
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
-
-        {/* HEADER */}
-        <View style={styles.headerCard}>
-          <View style={{ flex: 1 }}>
-            {clinicName ? (
-              <View style={styles.clinicRow}>
-                <Ionicons name="business-outline" size={11} color="#E63946" />
-                <Text style={styles.clinicName} numberOfLines={1}>{clinicName}</Text>
-              </View>
-            ) : null}
-            <Text style={styles.doctorName}>Dr. {doctorName}</Text>
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refreshAll}
+            tintColor="#E63946"
+            colors={['#E63946']}
+          />
+        }
+      >
+        {/* ── GREETING CARD ── */}
+        <View style={styles.greetingCard}>
+          <View style={styles.greetingLeft}>
+            <Text style={styles.greetingEmoji}>👋</Text>
+            <View>
+              <Text style={styles.greetingText}>{getTimeOfDay()}</Text>
+              <Text style={styles.greetingName}>{doctorName}</Text>
+            </View>
           </View>
-          <View style={styles.profileCircle}>
-            <Text style={styles.profileText}>{getInitials(doctorName)}</Text>
+          <View style={styles.todayBadge}>
+            <Text style={styles.todayBadgeText}>
+              {todayAppointments.length} Today
+            </Text>
           </View>
         </View>
 
-        {/* STATS */}
+        {/* ── Clinic Filter Dropdown ── */}
+        {clinics.length > 1 ? (
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setModalVisible(true)}
+          >
+            <Ionicons name="business-outline" size={16} color="#E63946" />
+            <Text style={styles.filterButtonText}>{getSelectedClinicName()}</Text>
+            <Ionicons name="chevron-down" size={16} color="#8A8A8A" />
+          </TouchableOpacity>
+        ) : null}
+
+        {/* ── STATS ── */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{stats.totalAppointments}</Text>
@@ -151,7 +233,7 @@ const DoctorDashboardScreen = ({ navigation }: any) => {
           </View>
         </View>
 
-        {/* TODAY APPOINTMENTS */}
+        {/* ── TODAY'S APPOINTMENTS ── */}
         <View style={styles.sectionRow}>
           <Text style={styles.sectionTitle}>Today's Appointments</Text>
           <Text style={styles.sectionCount}>{todayAppointments.length}</Text>
@@ -169,7 +251,6 @@ const DoctorDashboardScreen = ({ navigation }: any) => {
                       .toUpperCase()}
                   </Text>
                 </View>
-
                 <View style={styles.cardBody}>
                   <View style={styles.cardTopRow}>
                     <Text style={styles.patientName} numberOfLines={1}>
@@ -181,19 +262,16 @@ const DoctorDashboardScreen = ({ navigation }: any) => {
                       </Text>
                     </View>
                   </View>
-
                   <View style={styles.metaRow}>
                     <Ionicons name="medical-outline" size={11} color="#7A7A7A" />
                     <Text style={styles.metaText}>
                       Dr. {item.doctor?.name || item.doctorName || doctorName}
                     </Text>
                   </View>
-
                   <View style={styles.metaRow}>
                     <Ionicons name="call-outline" size={11} color="#7A7A7A" />
                     <Text style={styles.metaText}>{item.mobile || 'No Mobile'}</Text>
                   </View>
-
                   <View style={styles.metaRow}>
                     <Ionicons name="calendar-outline" size={11} color="#7A7A7A" />
                     <Text style={styles.metaText}>
@@ -218,12 +296,54 @@ const DoctorDashboardScreen = ({ navigation }: any) => {
           </View>
         )}
       </ScrollView>
+
+      {/* ── Clinic Selection Modal ── */}
+      <Modal
+        visible={modalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Clinic</Text>
+            <FlatList
+              data={clinics}
+              keyExtractor={(item) => item._id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.modalItem,
+                    selectedClinicId === item._id && styles.modalItemSelected,
+                  ]}
+                  onPress={() => {
+                    setSelectedClinicId(item._id);
+                    setModalVisible(false);
+                  }}
+                >
+                  <Text style={styles.modalItemText}>{item.name}</Text>
+                  {selectedClinicId === item._id && (
+                    <Ionicons name="checkmark" size={20} color="#E63946" />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity
+              style={styles.modalCloseBtn}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
 
 export default DoctorDashboardScreen;
 
+// ── Styles ──
 const RED = '#E63946';
 const BG = '#FFFFFF';
 
@@ -235,53 +355,49 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: (Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0) + 16,
+    paddingTop: 4,
     paddingBottom: 24,
   },
 
-  // Header
-  headerCard: {
-    backgroundColor: '#FAFAFA',
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginBottom: 14,
+  greetingCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: '#EDEDED',
   },
-  greeting: { fontSize: 11, color: '#8A8A8A', marginBottom: 2, fontWeight: '500' },
-  clinicRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
-  clinicName: {
-    fontSize: 11,
-    color: RED,
-    fontWeight: '700',
-    marginLeft: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
+  greetingLeft: { flexDirection: 'row', alignItems: 'center' },
+  greetingEmoji: { fontSize: 28, marginRight: 12 },
+  greetingText: { fontSize: 14, fontWeight: '600', color: '#6B6B6B' },
+  greetingName: { fontSize: 18, fontWeight: '700', color: '#1A1A1A' },
+  todayBadge: {
+    backgroundColor: '#E63946',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
-  doctorName: { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
-  profileCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(230,57,70,0.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(230,57,70,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileText: { color: RED, fontSize: 13, fontWeight: '700' },
+  todayBadgeText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
 
-  // Stats
-  statsContainer: {
+  filterButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 18,
-    gap: 8,
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#EDEDED',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 14,
+    alignSelf: 'flex-start',
   },
+  filterButtonText: { fontSize: 13, fontWeight: '600', color: '#1A1A1A', marginHorizontal: 6 },
+
+  statsContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 18, gap: 8 },
   statCard: {
     backgroundColor: '#FAFAFA',
     borderWidth: 1,
@@ -294,13 +410,7 @@ const styles = StyleSheet.create({
   statNumber: { fontSize: 16, fontWeight: '800', color: RED, marginBottom: 2 },
   statLabel: { fontSize: 10, color: '#8A8A8A', fontWeight: '600' },
 
-  // Section header
-  sectionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
+  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.2 },
   sectionCount: {
     fontSize: 11,
@@ -312,7 +422,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
 
-  // Appointment card (compact)
   appointmentCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -339,32 +448,14 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   avatarSmallText: { color: RED, fontSize: 12, fontWeight: '700' },
-
   cardBody: { flex: 1 },
-  cardTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
+  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   patientName: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', flex: 1, marginRight: 8 },
-
   metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2 },
   metaText: { fontSize: 11, color: '#8A8A8A', marginLeft: 4 },
   metaTimeText: { fontSize: 11, color: RED, fontWeight: '700', marginLeft: 3 },
-  metaDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: '#C4C4C4',
-    marginHorizontal: 6,
-  },
-
-  statusBadge: {
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
+  metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#C4C4C4', marginHorizontal: 6 },
+  statusBadge: { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
   statusText: { fontSize: 9.5, fontWeight: '700', textTransform: 'capitalize' },
 
   emptyCard: {
@@ -376,4 +467,19 @@ const styles = StyleSheet.create({
     borderColor: '#EDEDED',
   },
   emptyText: { fontSize: 12, color: '#9B9B9B', marginTop: 6, fontWeight: '600' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '70%',
+  },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', marginBottom: 16, textAlign: 'center' },
+  modalItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#EDEDED' },
+  modalItemSelected: { backgroundColor: 'rgba(230,57,70,0.05)', borderRadius: 8 },
+  modalItemText: { fontSize: 16, color: '#1A1A1A' },
+  modalCloseBtn: { marginTop: 12, paddingVertical: 14, backgroundColor: '#F0F0F0', borderRadius: 12, alignItems: 'center' },
+  modalCloseText: { color: '#1A1A1A', fontSize: 16, fontWeight: '600' },
 });

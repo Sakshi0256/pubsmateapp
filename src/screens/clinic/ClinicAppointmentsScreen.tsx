@@ -48,39 +48,71 @@ const C = {
   textSub: '#5A5A5A',
 };
 // ── Helper Functions ──────────────────────────────────────────────────────────
-const formatDate = (dateString: string | undefined) => {
-  if (!dateString) {
-    return 'No Date';
-  }
+// const formatDate = (dateString: string | undefined) => {
+//   if (!dateString) {
+//     return 'No Date';
+//   }
   
-  try {
-    // If it's already a formatted string like "2024-01-15"
-    if (typeof dateString === 'string') {
-      // Check if it's in YYYY-MM-DD format
-      if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        const [year, month, day] = dateString.split('-');
-        return `${day}/${month}/${year}`;
-      }
+//   try {
+//     // If it's already a formatted string like "2024-01-15"
+//     if (typeof dateString === 'string') {
+//       // Check if it's in YYYY-MM-DD format
+//       if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+//         const [year, month, day] = dateString.split('-');
+//         return `${day}/${month}/${year}`;
+//       }
       
-      // Try to parse as date
-      const date = new Date(dateString);
-      if (!isNaN(date.getTime())) {
-        return date.toLocaleDateString('en-IN', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-        });
-      }
+//       // Try to parse as date
+//       const date = new Date(dateString);
+//       if (!isNaN(date.getTime())) {
+//         return date.toLocaleDateString('en-IN', {
+//           day: '2-digit',
+//           month: 'short',
+//           year: 'numeric',
+//         });
+//       }
       
-      // If all fails, return the original string
-      return dateString;
-    }
+//       // If all fails, return the original string
+//       return dateString;
+//     }
     
-    return 'Invalid Date';
-  } catch (error) {
-    return dateString || 'Error';
+//     return 'Invalid Date';
+//   } catch (error) {
+//     return dateString || 'Error';
+//   }
+// };
+
+// ── Helper Functions ──────────────────────────────────────────────────────────
+const formatDisplayDate = (dateString: string | undefined) => {
+  if (!dateString) return 'No Date';
+
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      // If it's already a string like "2024-01-15", try parsing manually
+      const parts = dateString.split('-');
+      if (parts.length === 3 && parts[0].length === 4) {
+        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleDateString('en-GB', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          });
+        }
+      }
+      return dateString; // fallback
+    }
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return dateString || 'Invalid';
   }
 };
+
 
 // ── Main Screen ────────────────────────────────────────────────────────────────
 const ClinicAppointmentsScreen = ({ navigation }: { navigation: any }) => {
@@ -204,7 +236,7 @@ useAutoRefresh(refreshAppointments);
   const AppointmentCard = ({ item }: { item: Appointment }) => {
     // Get date from multiple possible fields
     const dateValue = item.date || item.slotDate || item.createdAt || item.updatedAt;
-    const formattedDate = formatDate(dateValue);
+   const formattedDate = formatDisplayDate(dateValue);
     
     return (
       <View style={styles.appointmentCard}>
@@ -373,7 +405,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 18,
-    paddingTop: Platform.OS === 'ios' ? 54 : 40,
+    // paddingTop: Platform.OS === 'ios' ? 54 : 40,
     paddingBottom: 16,
     backgroundColor: C.surface,
     borderBottomWidth: 1,
